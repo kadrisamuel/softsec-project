@@ -444,6 +444,7 @@ def create_app():
     # DELETE /api/delete-document  (and variants)
     @app.route("/api/delete-document", methods=["DELETE", "POST"])  # POST supported for convenience
     @app.route("/api/delete-document/<document_id>", methods=["DELETE"])
+    @require_auth
     def delete_document(document_id: int | None = None):
         # accept id from path, query (?id= / ?documentid=), or JSON body on POST
         if not document_id:
