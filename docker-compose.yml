@@ -24,7 +24,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: mariadb:11.4
+    image: mariadb:12.3
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
