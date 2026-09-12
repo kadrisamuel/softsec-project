@@ -87,14 +87,6 @@ def create_app():
 
     # --- Routes ---
     
-    @app.route("/<path:filename>")
-    def static_files(filename):
-        return app.send_static_file(filename)
-
-    @app.route("/")
-    def home():
-        return app.send_static_file("index.html")
-    
     @app.get("/healthz")
     def healthz():
         try:
