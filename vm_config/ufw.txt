@@ -1,0 +1,11 @@
+# Install ufw
+sudo apt install ufw
+
+# Allow ssh connections
+sudo ufw allow 22/tcp
+
+# Allow server connections
+sudo ufw allow 5000/tcp
+
+# Enable ufw
+sudo ufw enable
