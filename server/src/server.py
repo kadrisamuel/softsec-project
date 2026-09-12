@@ -29,6 +29,7 @@ def create_app():
 
     # --- Config ---
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+    app.config["SALT"] = os.environ.get("SALT", "tatou-auth")
     app.config["STORAGE_DIR"] = Path(os.environ.get("STORAGE_DIR", "./storage")).resolve()
     app.config["TOKEN_TTL_SECONDS"] = int(os.environ.get("TOKEN_TTL_SECONDS", "86400"))
 
@@ -56,7 +57,7 @@ def create_app():
 
     # --- Helpers ---
     def _serializer():
-        return URLSafeTimedSerializer(app.config["SECRET_KEY"], salt="tatou-auth")
+        return URLSafeTimedSerializer(app.config["SECRET_KEY"], salt=app.config["SALT"])
 
     def _auth_error(msg: str, code: int = 401):
         return jsonify({"error": msg}), code
