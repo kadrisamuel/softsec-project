@@ -5,6 +5,8 @@ services:
     build:
       context: server
       dockerfile: Dockerfile
+      secrets:
+        - flag_2
     ports:
       - "5000:5000"
     volumes:
@@ -41,20 +43,10 @@ services:
       retries: 5
     restart: unless-stopped
 
-  phpmyadmin:
-    image: phpmyadmin:5.2
-    environment:
-      - PMA_HOST=db
-      - PMA_PORT=3306
-      - UPLOAD_LIMIT=64M     # <-- use a unit and quote if using YAML key:value form
-      - MEMORY_LIMIT=256M
-    ports:
-      - "127.0.0.1:8080:80"
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-
 volumes:
   db-data:
   user-files:
+
+secrets:
+  flag_2:
+    environment: FLAG_2
