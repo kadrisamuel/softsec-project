@@ -1,0 +1,4 @@
+# Prevent .env files from being included in the image during the build phase
+.env
+*.env
+.env.*
