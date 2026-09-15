@@ -24,3 +24,7 @@ python_files = ["test_*.py"]
 
 [project.scripts]
 pdfwm = "watermarking_cli:main"                 # now you can run `pdfwm methods`
+
+# Change to search-path = ["."] after flask split migration completed
+[tool.pyrefly]
+search-path = [".", "src"]
