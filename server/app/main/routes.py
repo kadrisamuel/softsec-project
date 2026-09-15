@@ -1,4 +1,5 @@
-from flask import text, jsonify
+from flask import jsonify
+from sqlalchemy import text
 from app.main import bp
 from ..db import get_engine
 
