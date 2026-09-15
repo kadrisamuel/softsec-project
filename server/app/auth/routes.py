@@ -1,9 +1,10 @@
-from flask import jsonify, request
+from flask import current_app, jsonify, request
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import bp
+from .tokens import create_token
 from ..db import get_engine
 
 
@@ -48,3 +49,40 @@ def create_user():
     return jsonify(
         {"id": user.id, "email": user.email, "login": user.login}
     ), 201
+
+
+@bp.post("/login")
+def login():
+    # TODO: Validate the request body is JSON, normalize email consistently, 
+    # add rate limiting for failed login attempts
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip()
+    password = payload.get("password") or ""
+    if not email or not password:
+        return jsonify({"error": "email and password are required"}), 400
+
+    try:
+        with get_engine().connect() as connection:
+            user = connection.execute(
+                text(
+                    "SELECT id, email, login, hpassword "
+                    "FROM Users WHERE email = :email LIMIT 1"
+                ),
+                {"email": email},
+            ).first()
+    except Exception as error:
+        # TODO: Log exception and return a generic error. 
+        # Currently exposing database details to the client.
+        return jsonify({"error": f"database error: {str(error)}"}), 503
+
+    if not user or not check_password_hash(user.hpassword, password):
+        return jsonify({"error": "invalid credentials"}), 401
+
+    token = create_token(int(user.id), user.login, user.email)
+    return jsonify(
+        {
+            "token": token,
+            "token_type": "bearer",
+            "expires_in": current_app.config["TOKEN_TTL_SECONDS"],
+        }
+    ), 200
