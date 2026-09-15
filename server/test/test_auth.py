@@ -1,11 +1,12 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from flask import g
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import create_app
-from app.auth.tokens import create_token
+from app.auth.tokens import create_token, require_auth
 from server import app as old_app
 
 
@@ -137,3 +138,56 @@ def test_login_rejects_invalid_credentials():
 
     assert response.status_code == 401
     assert response.json == {"error": "invalid credentials"}
+
+
+def add_protected_test_route(app):
+    @app.get("/protected-test-route")
+    @require_auth
+    def protected_test_route():
+        return {"user": g.user}
+
+
+def test_require_auth_rejects_missing_token():
+    app = create_app()
+    add_protected_test_route(app)
+
+    response = app.test_client().get("/protected-test-route")
+
+    assert response.status_code == 401
+    assert response.json == {
+        "error": "Missing or invalid Authorization header"
+    }
+
+
+def test_require_auth_rejects_invalid_token():
+    app = create_app()
+    add_protected_test_route(app)
+
+    response = app.test_client().get(
+        "/protected-test-route",
+        headers={"Authorization": "Bearer invalid-token"},
+    )
+
+    assert response.status_code == 401
+    assert response.json == {"error": "Invalid token"}
+
+
+def test_require_auth_accepts_valid_token():
+    app = create_app()
+    add_protected_test_route(app)
+    with app.app_context():
+        token = create_token(7, "alice", "user@example.com")
+
+    response = app.test_client().get(
+        "/protected-test-route",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json == {
+        "user": {
+            "id": 7,
+            "login": "alice",
+            "email": "user@example.com",
+        }
+    }
