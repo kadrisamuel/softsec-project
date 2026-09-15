@@ -1,6 +1,6 @@
 from flask import jsonify
 from sqlalchemy import text
-from app.main import bp
+from . import bp
 from ..db import get_engine
 
 @bp.get("/healthz")
