@@ -1,7 +1,62 @@
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+from werkzeug.security import check_password_hash
+
 from app import create_app
+from server import app as old_app
 
 
 def test_auth_blueprint_is_registered():
     app = create_app()
 
     assert "auth" in app.blueprints
+
+
+def test_create_user_preserves_missing_fields_response():
+    for application in (old_app, create_app()):
+        response = application.test_client().post("/api/create-user", json={})
+
+        assert response.status_code == 400
+        assert response.json == {
+            "error": "email, login, and password are required"
+        }
+
+
+def test_create_user_creates_user():
+    app = create_app()
+    engine = MagicMock()
+    app.extensions["tatou-db"] = engine
+
+    connection = engine.begin.return_value.__enter__.return_value
+    insert_result = SimpleNamespace(lastrowid=7)
+    select_result = MagicMock()
+    select_result.one.return_value = SimpleNamespace(
+        id=7,
+        email="user@example.com",
+        login="alice",
+    )
+    connection.execute.side_effect = [insert_result, select_result]
+
+    response = app.test_client().post(
+        "/api/create-user",
+        json={
+            "email": " User@Example.com ",
+            "login": "alice",
+            "password": "test-password",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json == {
+        "id": 7,
+        "email": "user@example.com",
+        "login": "alice",
+    }
+
+    insert_parameters = connection.execute.call_args_list[0].args[1]
+    assert insert_parameters["email"] == "user@example.com"
+    assert check_password_hash(
+        insert_parameters["password_hash"],
+        "test-password",
+    )
