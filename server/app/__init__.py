@@ -1,4 +1,3 @@
-from flask.sansio import app
 from flask import Flask
 from .config import Config
 from . import db
