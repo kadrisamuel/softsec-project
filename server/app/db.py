@@ -1,9 +1,9 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine, URL
 from flask import current_app
 
 def init_app(app) -> None:
-    app.extensions["tatou-db"] = create_engine(db_url(app))
+    app.extensions["tatou-db"] = create_engine(db_url(app), pool_pre_ping=True) # pool_pre_ping=True for stale connection protection
 
 def db_url(app) -> URL:
     url = URL.create(
