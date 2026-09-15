@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from itsdangerous import URLSafeTimedSerializer
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import create_app
 from app.auth.tokens import create_token
@@ -84,3 +84,56 @@ def test_create_token_preserves_authentication_payload():
         "login": "alice",
         "email": "user@example.com",
     }
+
+
+def test_login_preserves_missing_fields_response():
+    for application in (old_app, create_app()):
+        response = application.test_client().post("/api/login", json={})
+
+        assert response.status_code == 400
+        assert response.json == {"error": "email and password are required"}
+
+
+def test_login_returns_token_for_valid_credentials():
+    app = create_app()
+    engine = MagicMock()
+    app.extensions["tatou-db"] = engine
+
+    connection = engine.connect.return_value.__enter__.return_value
+    select_result = MagicMock()
+    select_result.first.return_value = SimpleNamespace(
+        id=7,
+        email="user@example.com",
+        login="alice",
+        hpassword=generate_password_hash("test-password"),
+    )
+    connection.execute.return_value = select_result
+
+    response = app.test_client().post(
+        "/api/login",
+        json={"email": "user@example.com", "password": "test-password"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["token_type"] == "bearer"
+    assert response.json["expires_in"] == app.config["TOKEN_TTL_SECONDS"]
+    assert response.json["token"]
+
+
+def test_login_rejects_invalid_credentials():
+    app = create_app()
+    engine = MagicMock()
+    app.extensions["tatou-db"] = engine
+
+    connection = engine.connect.return_value.__enter__.return_value
+    select_result = MagicMock()
+    select_result.first.return_value = None
+    connection.execute.return_value = select_result
+
+    response = app.test_client().post(
+        "/api/login",
+        json={"email": "user@example.com", "password": "wrong-password"},
+    )
+
+    assert response.status_code == 401
+    assert response.json == {"error": "invalid credentials"}
