@@ -16,5 +16,11 @@ def db_url(app) -> URL:
           query={"charset": "utf8mb4"})
     return url
 
+
+# Good to know for testing:
+# get_engine() requires a Flask application context. It works automatically inside routes. 
+# Outside routes, such as scripts or tests, use:
+#   with app.app_context():
+#       engine = get_engine()
 def get_engine() -> Engine:
     return current_app.extensions["tatou-db"]
