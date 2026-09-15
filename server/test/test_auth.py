@@ -1,9 +1,11 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash
 
 from app import create_app
+from app.auth.tokens import create_token
 from server import app as old_app
 
 
@@ -60,3 +62,25 @@ def test_create_user_creates_user():
         insert_parameters["password_hash"],
         "test-password",
     )
+
+
+def test_create_token_preserves_authentication_payload():
+    app = create_app()
+
+    with app.app_context():
+        token = create_token(7, "alice", "user@example.com")
+
+    serializer = URLSafeTimedSerializer(
+        app.config["SECRET_KEY"],
+        salt="tatou-auth",
+    )
+    payload = serializer.loads(
+        token,
+        max_age=app.config["TOKEN_TTL_SECONDS"],
+    )
+
+    assert payload == {
+        "uid": 7,
+        "login": "alice",
+        "email": "user@example.com",
+    }
