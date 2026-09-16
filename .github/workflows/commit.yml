@@ -1,0 +1,30 @@
+name: Generic checks for commits and pull requests
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - '**/*.py'
+  pull_request:
+    paths:
+      - '**/*.py'
+
+jobs:
+  # Pylint
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pylint
+
+      - name: Run Pylint
+        run: pylint server/src/

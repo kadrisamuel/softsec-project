@@ -6,23 +6,23 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends git ca-certificates openssh-client \
- && rm -rf /var/lib/apt/lists/*
-
-# Copy project description
+# Copy the package and install runtime dependencies
 COPY pyproject.toml /app/pyproject.toml
 COPY app /app/app
-
-# Install runtime dependencies
 RUN pip install --no-cache-dir -e .
 
-# Copy sources after dependencies installation
 COPY wsgi.py /app/wsgi.py
+
+# Initialize second flag
 COPY flag /app/flag
-COPY entrypoint.sh /app/entrypoint.sh
+RUN --mount=type=secret,id=flag_2 sed -i "s/REPLACE_THIS_STRING_WITH_SERVER_FLAG/$(cat /run/secrets/flag_2)/g" /app/flag
+RUN chmod 400 /app/flag
+
+# Create and switch to non-root user
+RUN adduser --system --no-create-home pyu
+USER pyu
 
 EXPOSE 5000
 
 # Default command runs the web server
-CMD ["./entrypoint.sh"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "wsgi:app"]
