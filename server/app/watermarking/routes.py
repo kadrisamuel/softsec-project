@@ -11,10 +11,9 @@ from flask import current_app, jsonify, request
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
-import watermarking_utils as watermarking_utils
-from watermarking_method import WatermarkingMethod
-
 from . import bp
+from . import utils as watermarking_utils
+from .method import WatermarkingMethod
 from ..auth.tokens import require_auth
 from ..db import get_engine
 

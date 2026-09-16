@@ -20,9 +20,8 @@ except Exception:  # dill is optional
     _pickle = _std_pickle
 
 
-import watermarking_utils as WMUtils
-from watermarking_method import WatermarkingMethod
-#from watermarking_utils import METHODS, apply_watermark, read_watermark, explore_pdf, is_watermarking_applicable, get_method
+from app.watermarking import utils as WMUtils
+from app.watermarking.method import WatermarkingMethod
 
 def create_app():
     app = Flask(__name__)
@@ -820,4 +819,3 @@ app = create_app()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
