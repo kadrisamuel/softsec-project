@@ -1,4 +1,6 @@
-from flask import g, jsonify
+from pathlib import Path
+
+from flask import current_app, g, jsonify, request, send_file
 from sqlalchemy import text
 
 from . import bp
@@ -42,3 +44,190 @@ def list_documents():
         for row in rows
     ]
     return jsonify({"documents": documents}), 200
+
+
+@bp.get("/list-versions")
+@bp.get("/list-versions/<int:document_id>")
+@require_auth
+def list_versions(document_id: int | None = None):
+    if document_id is None:
+        document_id = request.args.get("id") or request.args.get("documentid")
+        try:
+            document_id = int(document_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "document id required"}), 400
+
+    try:
+        with get_engine().connect() as connection:
+            rows = connection.execute(
+                text(
+                    """
+                    SELECT v.id, v.documentid, v.link, v.intended_for,
+                           v.secret, v.method
+                    FROM Users u
+                    JOIN Documents d ON d.ownerid = u.id
+                    JOIN Versions v ON d.id = v.documentid
+                    WHERE u.login = :glogin AND d.id = :did
+                    """
+                ),
+                {"glogin": str(g.user["login"]), "did": document_id},
+            ).all()
+    except Exception as error:
+        # TODO: Log the exception and return a generic database error.
+        return jsonify({"error": f"database error: {str(error)}"}), 503
+
+    versions = [
+        {
+            "id": int(row.id),
+            "documentid": int(row.documentid),
+            "link": row.link,
+            "intended_for": row.intended_for,
+            "secret": row.secret,
+            "method": row.method,
+        }
+        for row in rows
+    ]
+    return jsonify({"versions": versions}), 200
+
+
+@bp.get("/list-all-versions")
+@require_auth
+def list_all_versions():
+    try:
+        with get_engine().connect() as connection:
+            rows = connection.execute(
+                text(
+                    """
+                    SELECT v.id, v.documentid, v.link, v.intended_for, v.method
+                    FROM Users u
+                    JOIN Documents d ON d.ownerid = u.id
+                    JOIN Versions v ON d.id = v.documentid
+                    WHERE u.login = :glogin
+                    """
+                ),
+                {"glogin": str(g.user["login"])},
+            ).all()
+    except Exception as error:
+        # TODO: Log the exception and return a generic database error.
+        return jsonify({"error": f"database error: {str(error)}"}), 503
+
+    versions = [
+        {
+            "id": int(row.id),
+            "documentid": int(row.documentid),
+            "link": row.link,
+            "intended_for": row.intended_for,
+            "method": row.method,
+        }
+        for row in rows
+    ]
+    return jsonify({"versions": versions}), 200
+
+
+@bp.get("/get-document")
+@bp.get("/get-document/<int:document_id>")
+@require_auth
+def get_document(document_id: int | None = None):
+    if document_id is None:
+        document_id = request.args.get("id") or request.args.get("documentid")
+        try:
+            document_id = int(document_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "document id required"}), 400
+
+    try:
+        with get_engine().connect() as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT id, name, path, HEX(sha256) AS sha256_hex, size
+                    FROM Documents
+                    WHERE id = :id AND ownerid = :uid
+                    LIMIT 1
+                    """
+                ),
+                {"id": document_id, "uid": int(g.user["id"])},
+            ).first()
+    except Exception as error:
+        # TODO: Log the exception and return a generic database error.
+        return jsonify({"error": f"database error: {str(error)}"}), 503
+
+    if not row:
+        return jsonify({"error": "document not found"}), 404
+
+    file_path = Path(row.path)
+    try:
+        file_path.resolve().relative_to(
+            current_app.config["STORAGE_DIR"].resolve()
+        )
+    except Exception:
+        return jsonify({"error": "document path invalid"}), 500
+
+    if not file_path.exists():
+        return jsonify({"error": "file missing on disk"}), 410
+
+    response = send_file(
+        file_path,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=(
+            row.name if row.name.lower().endswith(".pdf") else f"{row.name}.pdf"
+        ),
+        conditional=True,
+        max_age=0,
+        last_modified=file_path.stat().st_mtime,
+    )
+    if isinstance(row.sha256_hex, str) and row.sha256_hex:
+        response.set_etag(row.sha256_hex.lower())
+
+    response.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+    return response
+
+
+# TODO: Review whether version files should remain accessible without a token.
+@bp.get("/get-version/<link>")
+def get_version(link: str):
+    try:
+        with get_engine().connect() as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT *
+                    FROM Versions
+                    WHERE link = :link
+                    LIMIT 1
+                    """
+                ),
+                {"link": link},
+            ).first()
+    except Exception as error:
+        # TODO: Log the exception and return a generic database error.
+        return jsonify({"error": f"database error: {str(error)}"}), 503
+
+    if not row:
+        return jsonify({"error": "document not found"}), 404
+
+    file_path = Path(row.path)
+    try:
+        file_path.resolve().relative_to(
+            current_app.config["STORAGE_DIR"].resolve()
+        )
+    except Exception:
+        return jsonify({"error": "document path invalid"}), 500
+
+    if not file_path.exists():
+        return jsonify({"error": "file missing on disk"}), 410
+
+    response = send_file(
+        file_path,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=(
+            row.link if row.link.lower().endswith(".pdf") else f"{row.link}.pdf"
+        ),
+        conditional=True,
+        max_age=0,
+        last_modified=file_path.stat().st_mtime,
+    )
+    response.headers["Cache-Control"] = "private, max-age=0"
+    return response
