@@ -21,4 +21,7 @@ def create_app(config_class=Config):
     from .documents import bp as documents_bp
     app.register_blueprint(documents_bp)
 
+    from .watermarking import bp as watermarking_bp
+    app.register_blueprint(watermarking_bp)
+
     return app
