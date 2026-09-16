@@ -65,13 +65,14 @@ def test_create_user_creates_user():
 
 def test_create_token_preserves_authentication_payload():
     app = create_app()
+    app.config["SALT"] = "test-salt"
 
     with app.app_context():
         token = create_token(7, "alice", "user@example.com")
 
     serializer = URLSafeTimedSerializer(
         app.config["SECRET_KEY"],
-        salt="tatou-auth",
+        salt=app.config["SALT"],
     )
     payload = serializer.loads(
         token,

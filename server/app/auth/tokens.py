@@ -7,7 +7,7 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 def _serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(
         current_app.config["SECRET_KEY"],
-        salt="tatou-auth",
+        salt=current_app.config["SALT"],
     )
 
 

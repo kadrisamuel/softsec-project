@@ -3,6 +3,7 @@ from pathlib import Path
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+    SALT = os.environ.get("SALT", "tatou-auth")
     STORAGE_DIR = Path(os.environ.get("STORAGE_DIR", "./storage")).resolve()
     TOKEN_TTL_SECONDS = int(os.environ.get("TOKEN_TTL_SECONDS", "86400"))
 
