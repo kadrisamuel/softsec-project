@@ -41,10 +41,9 @@ def create_user():
             ).one()
     except IntegrityError:
         return jsonify({"error": "email or login already exists"}), 409
-    except Exception as error:
-        # TODO: Log exception and return a generic error. 
-        # Currently exposing database details to the client.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+    except Exception:
+        current_app.logger.exception("DB error while creating user")
+        return jsonify({"error": "user creation failed"}), 503
 
     return jsonify(
         {"id": user.id, "email": user.email, "login": user.login}
@@ -71,9 +70,8 @@ def login():
                 {"email": email},
             ).first()
     except Exception as error:
-        # TODO: Log exception and return a generic error. 
-        # Currently exposing database details to the client.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception("DB error during login")
+        return jsonify({"error": "Login failed"}), 503
 
     if not user or not check_password_hash(user.hpassword, password):
         return jsonify({"error": "invalid credentials"}), 401
