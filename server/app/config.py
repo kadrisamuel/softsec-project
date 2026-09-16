@@ -14,3 +14,5 @@ class Config:
     DB_NAME = os.environ.get("DB_NAME", "tatou")
 
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    ENABLE_APP_ROUTES = (os.environ.get("ENABLE_APP_ROUTES", "false").lower() == "true")
