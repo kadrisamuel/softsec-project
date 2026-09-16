@@ -12,6 +12,9 @@ def create_app(config_class=Config):
     db.init_app(app)
 
     # Register blueprints
+    from .health import bp as health_bp
+    app.register_blueprint(health_bp)
+
     from .main import bp as main_bp
     app.register_blueprint(main_bp)
 

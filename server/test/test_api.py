@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app import create_app
-import app.main.routes as main_routes
+import app.health.routes as health_routes
 
 
 def test_new_healthz():
@@ -16,7 +16,7 @@ def test_new_healthz():
 # Tests route behavior only
 def test_healthz_database_connected(monkeypatch):
     engine = MagicMock()
-    monkeypatch.setattr(main_routes, "get_engine", lambda: engine)
+    monkeypatch.setattr(health_routes, "get_engine", lambda: engine)
 
     response = create_app().test_client().get("/healthz")
 
@@ -28,7 +28,7 @@ def test_healthz_database_connected(monkeypatch):
 def test_healthz_database_disconnected(monkeypatch):
     engine = MagicMock()
     engine.connect.side_effect = RuntimeError("database unavailable")
-    monkeypatch.setattr(main_routes, "get_engine", lambda: engine)
+    monkeypatch.setattr(health_routes, "get_engine", lambda: engine)
 
     response = create_app().test_client().get("/healthz")
 
