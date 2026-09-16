@@ -15,15 +15,7 @@ class Config:
 
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    ENABLE_MAIN_ROUTES = (
-        os.environ.get("ENABLE_MAIN_ROUTES", "false").lower() == "true"
-    )
-    ENABLE_AUTH_ROUTES = (
-        os.environ.get("ENABLE_AUTH_ROUTES", "false").lower() == "true"
-    )
-    ENABLE_DOCUMENT_ROUTES = (
-        os.environ.get("ENABLE_DOCUMENT_ROUTES", "false").lower() == "true"
-    )
-    ENABLE_WATERMARKING_ROUTES = (
-        os.environ.get("ENABLE_WATERMARKING_ROUTES", "false").lower() == "true"
-    )
+    ENABLE_MAIN_ROUTES = (os.environ.get("ENABLE_MAIN_ROUTES", "false").lower() == "true")
+    ENABLE_AUTH_ROUTES = (os.environ.get("ENABLE_AUTH_ROUTES", "false").lower() == "true")
+    ENABLE_DOCUMENT_ROUTES = (os.environ.get("ENABLE_DOCUMENT_ROUTES", "false").lower() == "true")
+    ENABLE_WATERMARKING_ROUTES = (os.environ.get("ENABLE_WATERMARKING_ROUTES", "false").lower() == "true")
