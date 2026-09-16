@@ -25,6 +25,9 @@ python_files = ["test_*.py"]
 [project.scripts]
 pdfwm = "app.watermarking.cli:main"
 
-# Change to search-path = ["."] after flask split migration completed
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
 [tool.pyrefly]
-search-path = [".", "src"]
+search-path = ["."]

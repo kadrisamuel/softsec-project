@@ -3,24 +3,15 @@ from unittest.mock import MagicMock
 import pytest
 
 from app import create_app
-from server import app as old_app
 import app.main.routes as main_routes
 
 
-def check_healthz(app):
-    response = app.test_client().get("/healthz")
+def test_new_healthz():
+    response = create_app().test_client().get("/healthz")
 
     assert response.status_code == 200
     assert response.is_json
     assert response.json["message"] == "The server is up and running."
-
-# Remove after migration done
-def test_old_healthz():
-    check_healthz(old_app)
-
-
-def test_new_healthz():
-    check_healthz(create_app())
 
 # Tests route behavior only
 def test_healthz_database_connected(monkeypatch):

@@ -7,7 +7,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import create_app
 from app.auth.tokens import create_token, require_auth
-from server import app as old_app
 
 
 def test_auth_blueprint_is_registered():
@@ -17,13 +16,12 @@ def test_auth_blueprint_is_registered():
 
 
 def test_create_user_preserves_missing_fields_response():
-    for application in (old_app, create_app()):
-        response = application.test_client().post("/api/create-user", json={})
+    response = create_app().test_client().post("/api/create-user", json={})
 
-        assert response.status_code == 400
-        assert response.json == {
-            "error": "email, login, and password are required"
-        }
+    assert response.status_code == 400
+    assert response.json == {
+        "error": "email, login, and password are required"
+    }
 
 
 def test_create_user_creates_user():
@@ -88,11 +86,10 @@ def test_create_token_preserves_authentication_payload():
 
 
 def test_login_preserves_missing_fields_response():
-    for application in (old_app, create_app()):
-        response = application.test_client().post("/api/login", json={})
+    response = create_app().test_client().post("/api/login", json={})
 
-        assert response.status_code == 400
-        assert response.json == {"error": "email and password are required"}
+    assert response.status_code == 400
+    assert response.json == {"error": "email and password are required"}
 
 
 def test_login_returns_token_for_valid_credentials():

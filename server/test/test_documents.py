@@ -6,7 +6,6 @@ import pytest
 
 from app import create_app
 from app.auth.tokens import create_token
-from server import app as old_app
 
 
 def test_documents_blueprint_is_registered():
@@ -16,13 +15,12 @@ def test_documents_blueprint_is_registered():
 
 
 def test_list_documents_preserves_missing_token_response():
-    for application in (old_app, create_app()):
-        response = application.test_client().get("/api/list-documents")
+    response = create_app().test_client().get("/api/list-documents")
 
-        assert response.status_code == 401
-        assert response.json == {
-            "error": "Missing or invalid Authorization header"
-        }
+    assert response.status_code == 401
+    assert response.json == {
+        "error": "Missing or invalid Authorization header"
+    }
 
 
 def test_list_documents_returns_documents():
