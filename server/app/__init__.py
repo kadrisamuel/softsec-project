@@ -18,4 +18,7 @@ def create_app(config_class=Config):
     from .auth import bp as auth_bp
     app.register_blueprint(auth_bp)
 
+    from .documents import bp as documents_bp
+    app.register_blueprint(documents_bp)
+
     return app
