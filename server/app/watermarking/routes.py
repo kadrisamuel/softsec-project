@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 
 from . import bp
 from . import utils as watermarking_utils
-from .method import WatermarkingMethod
+from .method import WatermarkingError, WatermarkingMethod
 from ..auth.tokens import require_auth
 from ..db import get_engine
 
@@ -83,6 +83,10 @@ def create_watermark(document_id: int | None = None):
     try:
         file_path.relative_to(storage_root)
     except ValueError:
+        current_app.logger.exception(
+            "Path safety check failed during watermark creation for document id=%s",
+            document_id,
+        )
         return jsonify({"error": "document path invalid"}), 500
     if not file_path.exists():
         return jsonify({"error": "file missing on disk"}), 500
@@ -96,6 +100,10 @@ def create_watermark(document_id: int | None = None):
         if applicable is False:
             return jsonify({"error": "watermarking method not applicable"}), 400
     except Exception as error:
+        current_app.logger.exception(
+            "Watermark applicability check failed for document id=%s",
+            document_id,
+        )
         return jsonify({"error": "watermark applicability check failed"}), 500
 
     try:
@@ -112,6 +120,10 @@ def create_watermark(document_id: int | None = None):
         ):
             return jsonify({"error": "watermarking produced no output"}), 500
     except Exception as error:
+        current_app.logger.exception(
+            "Watermark creation failed for document id=%s",
+            document_id,
+        )
         return jsonify({"error": "watermarking failed"}), 500
 
     base_name = Path(row.name or file_path.name).stem
@@ -125,6 +137,10 @@ def create_watermark(document_id: int | None = None):
         with destination_path.open("wb") as file:
             file.write(watermarked_bytes)
     except Exception as error:
+        current_app.logger.exception(
+            "Failed to write watermarked file for document id=%s",
+            document_id,
+        )
         return jsonify(
             {"error": "failed to write watermarked file"}
         ), 500
@@ -156,11 +172,17 @@ def create_watermark(document_id: int | None = None):
                 connection.execute(text("SELECT LAST_INSERT_ID()")).scalar()
             )
     except Exception as error:
+        current_app.logger.exception(
+            "DB error while inserting watermark version for document id=%s",
+            document_id,
+        )
         try:
             destination_path.unlink(missing_ok=True)
         except Exception:
-            pass
-        # TODO: Log the exception
+            current_app.logger.exception(
+                "Failed to remove watermarked file after DB error: %s",
+                destination_path,
+            )
         return jsonify(
             {"error": f"database error during version insert"}
         ), 500
@@ -195,6 +217,10 @@ def load_plugin():
         plugins_directory.mkdir(parents=True, exist_ok=True)
         plugin_path = plugins_directory / filename
     except Exception as error:
+        current_app.logger.exception(
+            "Failed to prepare plugin path for filename=%s",
+            filename,
+        )
         return jsonify({"error": "plugin path error"}), 500
 
     # TODO: Prevent path traversal and replace unsafe pickle/dill loading with a
@@ -311,7 +337,10 @@ def read_watermark(document_id: int | None = None):
                 {"id": document_id},
             ).first()
     except Exception as error:
-        # TODO: Log the exception 
+        current_app.logger.exception(
+            "DB error while retrieving document for watermark read id=%s",
+            document_id,
+        )
         return jsonify({"error": "database error"}), 500
 
     if not row:
@@ -325,6 +354,10 @@ def read_watermark(document_id: int | None = None):
     try:
         file_path.relative_to(storage_root)
     except ValueError:
+        current_app.logger.exception(
+            "Path safety check failed during watermark read for document id=%s",
+            document_id,
+        )
         return jsonify({"error": "document path invalid"}), 500
     if not file_path.exists():
         return jsonify({"error": "file missing on disk"}), 500
@@ -335,7 +368,15 @@ def read_watermark(document_id: int | None = None):
             pdf=str(file_path),
             key=key,
         )
-    except Exception as error:
+    except (ValueError, WatermarkingError):
+        return jsonify(
+            {"error": "Error when attempting to read watermark"}
+        ), 400
+    except Exception:
+        current_app.logger.exception(
+            "Unexpected error while reading watermark for document id=%s",
+            document_id,
+        )
         return jsonify(
             {"error": "Error when attempting to read watermark"}
         ), 400

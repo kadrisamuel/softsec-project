@@ -1,4 +1,4 @@
-from flask import jsonify
+from flask import current_app, jsonify
 from sqlalchemy import text
 
 from . import bp
@@ -12,6 +12,7 @@ def healthz():
             connection.execute(text("SELECT 1"))
         db_ok = True
     except Exception:
+        current_app.logger.exception("Database health check failed")
         db_ok = False
 
     return jsonify(
