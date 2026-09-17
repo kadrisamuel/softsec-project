@@ -97,7 +97,7 @@ def upload_document():
     except Exception as error:
         # TODO: Log the error and remove the stored
         # file when the database transaction fails
-        return jsonify({"error": "database error"}), 503
+        return jsonify({"error": "database error"}), 500
 
     return jsonify(
         {
@@ -132,7 +132,7 @@ def list_documents():
             ).all()
     except Exception as error:
         # TODO: Log the exception
-        return jsonify({"error": "database error"}), 503
+        return jsonify({"error": "database error"}), 500
 
     documents = [
         {
@@ -179,7 +179,7 @@ def list_versions(document_id: int | None = None):
             ).all()
     except Exception as error:
         # TODO: Log the exception 
-        return jsonify({"error": "database error"}), 503
+        return jsonify({"error": "database error"}), 500
 
     versions = [
         {
@@ -214,7 +214,7 @@ def list_all_versions():
             ).all()
     except Exception as error:
         # TODO: Log the exception 
-        return jsonify({"error": "database error"}), 503
+        return jsonify({"error": "database error"}), 500
 
     versions = [
         {
@@ -255,7 +255,7 @@ def get_document(document_id: int | None = None):
             ).first()
     except Exception as error:
         # TODO: Log the exception
-        return jsonify({"error": "database error"}), 503
+        return jsonify({"error": "database error"}), 500
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -269,7 +269,7 @@ def get_document(document_id: int | None = None):
         return jsonify({"error": "document path invalid"}), 500
 
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 410
+        return jsonify({"error": "file missing on disk"}), 500
 
     response = send_file(
         file_path,
@@ -307,7 +307,7 @@ def get_version(link: str):
             ).first()
     except Exception as error:
         # TODO: Log the exception 
-        return jsonify({"error": "database error"}), 503
+        return jsonify({"error": "database error"}), 500
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -321,7 +321,7 @@ def get_version(link: str):
         return jsonify({"error": "document path invalid"}), 500
 
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 410
+        return jsonify({"error": "file missing on disk"}), 500
 
     response = send_file(
         file_path,
@@ -361,7 +361,7 @@ def delete_document(document_id: int | None = None):
             row = connection.execute(text(query)).first()
     except Exception as error:
         # TODO: Log the exception 
-        return jsonify({"error": "database error"}), 503
+        return jsonify({"error": "database error"}), 500
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -404,7 +404,7 @@ def delete_document(document_id: int | None = None):
         # TODO: Log the exception 
         return jsonify(
             {"error": "database error during delete"}
-        ), 503
+        ), 500
 
     return jsonify(
         {

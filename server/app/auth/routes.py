@@ -47,7 +47,7 @@ def create_user():
         return jsonify({"error": "email or login already exists"}), 409
     except Exception:
         current_app.logger.exception("DB error while creating user")
-        return jsonify({"error": "user creation failed"}), 503
+        return jsonify({"error": "user creation failed"}), 500
 
     return jsonify(
         {"id": user.id, "email": user.email, "login": user.login}
@@ -78,7 +78,7 @@ def login():
             ).first()
     except Exception as error:
         current_app.logger.exception("DB error during login")
-        return jsonify({"error": "Login failed"}), 503
+        return jsonify({"error": "Login failed"}), 500
 
     if not user or not check_password_hash(user.hpassword, password):
         return jsonify({"error": "invalid credentials"}), 401

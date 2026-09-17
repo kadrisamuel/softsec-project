@@ -70,7 +70,7 @@ def create_watermark(document_id: int | None = None):
             ).first()
     except Exception as error:
         current_app.logger.exception("DB error during watermark creation")
-        return jsonify({"error": "Watermark creation failed"}), 503
+        return jsonify({"error": "Watermark creation failed"}), 500
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -85,7 +85,7 @@ def create_watermark(document_id: int | None = None):
     except ValueError:
         return jsonify({"error": "document path invalid"}), 500
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 410
+        return jsonify({"error": "file missing on disk"}), 500
 
     try:
         applicable = watermarking_utils.is_watermarking_applicable(
@@ -163,7 +163,7 @@ def create_watermark(document_id: int | None = None):
         # TODO: Log the exception
         return jsonify(
             {"error": f"database error during version insert"}
-        ), 503
+        ), 500
 
     return jsonify(
         {
@@ -312,7 +312,7 @@ def read_watermark(document_id: int | None = None):
             ).first()
     except Exception as error:
         # TODO: Log the exception 
-        return jsonify({"error": "database error"}), 503
+        return jsonify({"error": "database error"}), 500
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -327,7 +327,7 @@ def read_watermark(document_id: int | None = None):
     except ValueError:
         return jsonify({"error": "document path invalid"}), 500
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 410
+        return jsonify({"error": "file missing on disk"}), 500
 
     try:
         secret = watermarking_utils.read_watermark(
@@ -347,4 +347,4 @@ def read_watermark(document_id: int | None = None):
             "method": method,
             "position": position,
         }
-    ), 201
+    ), 200
