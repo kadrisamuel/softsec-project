@@ -56,3 +56,10 @@ def test_get_watermarking_methods_returns_registry():
     assert response.status_code == 200
     assert response.is_json
     assert response.json["count"] == len(response.json["methods"])
+
+
+# TODO: Test that create-watermark returns 400 for an unknown method.
+# TODO: Test that load-plugin returns 404 when the plugin file is missing.
+# TODO: Test read-watermark success (200), known client errors (400), and
+# unexpected processing errors (500).
+# TODO: Test that watermark database and missing-backing-file failures return 500.

@@ -189,3 +189,6 @@ def test_require_auth_accepts_valid_token():
             "email": "user@example.com",
         }
     }
+
+
+# TODO: Test that create-user and login database failures return 500.
