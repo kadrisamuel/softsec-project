@@ -10,9 +10,13 @@ from ..db import get_engine
 
 @bp.post("/create-user")
 def create_user():
-    # TODO: Validate the request body is JSON object, validate email,
-    # define password requirements
-    payload = request.get_json(silent=True) or {}
+    # TODO: Validate email, define password requirements
+    if not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json"}), 415
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
     email = (payload.get("email") or "").strip().lower()
     login = (payload.get("login") or "").strip()
     password = payload.get("password") or ""
@@ -52,10 +56,13 @@ def create_user():
 
 @bp.post("/login")
 def login():
-    # TODO: Validate the request body is JSON, normalize email consistently, 
-    # add rate limiting for failed login attempts
-    payload = request.get_json(silent=True) or {}
-    email = (payload.get("email") or "").strip()
+    # TODO: Add rate limiting for failed login attempts
+    if not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json"}), 415
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+    email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     if not email or not password:
         return jsonify({"error": "email and password are required"}), 400

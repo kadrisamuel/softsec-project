@@ -378,7 +378,7 @@ def delete_document(document_id: int | None = None):
                 file_path.unlink()
                 file_deleted = True
             except Exception as error:
-                delete_error = f"failed to delete file: {error}"
+                delete_error = "failed to delete file"
                 current_app.logger.warning(
                     "Failed to delete file %s for doc id=%s: %s",
                     file_path,
@@ -402,9 +402,9 @@ def delete_document(document_id: int | None = None):
                 {"id": document_id},
             )
     except Exception as error:
-        # TODO: Log the exception and return a generic database error
+        # TODO: Log the exception 
         return jsonify(
-            {"error": f"database error during delete: {str(error)}"}
+            {"error": "database error during delete"}
         ), 503
 
     return jsonify(

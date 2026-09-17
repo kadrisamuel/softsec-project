@@ -69,8 +69,8 @@ def create_watermark(document_id: int | None = None):
                 {"id": document_id},
             ).first()
     except Exception as error:
-        # TODO: Log the exception and return a generic db error
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception("DB error during watermark creation")
+        return jsonify({"error": "Watermark creation failed"}), 503
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -96,9 +96,7 @@ def create_watermark(document_id: int | None = None):
         if applicable is False:
             return jsonify({"error": "watermarking method not applicable"}), 400
     except Exception as error:
-        return jsonify(
-            {"error": f"watermark applicability check failed: {error}"}
-        ), 400
+        return jsonify({"error": "watermark applicability check failed"}), 500
 
     try:
         watermarked_bytes = watermarking_utils.apply_watermark(
@@ -114,7 +112,7 @@ def create_watermark(document_id: int | None = None):
         ):
             return jsonify({"error": "watermarking produced no output"}), 500
     except Exception as error:
-        return jsonify({"error": f"watermarking failed: {error}"}), 500
+        return jsonify({"error": "watermarking failed"}), 500
 
     base_name = Path(row.name or file_path.name).stem
     intended_slug = secure_filename(intended_for)
@@ -128,7 +126,7 @@ def create_watermark(document_id: int | None = None):
             file.write(watermarked_bytes)
     except Exception as error:
         return jsonify(
-            {"error": f"failed to write watermarked file: {error}"}
+            {"error": "failed to write watermarked file"}
         ), 500
 
     link = hashlib.sha1(filename.encode("utf-8")).hexdigest()
@@ -164,7 +162,7 @@ def create_watermark(document_id: int | None = None):
             pass
         # TODO: Log the exception and return a generic db error
         return jsonify(
-            {"error": f"database error during version insert: {error}"}
+            {"error": f"database error during version insert"}
         ), 503
 
     return jsonify(
@@ -197,7 +195,7 @@ def load_plugin():
         plugins_directory.mkdir(parents=True, exist_ok=True)
         plugin_path = plugins_directory / filename
     except Exception as error:
-        return jsonify({"error": f"plugin path error: {error}"}), 500
+        return jsonify({"error": "plugin path error"}), 500
 
     # TODO: Prevent path traversal and replace unsafe pickle/dill loading with a
     # trusted plugin installation mechanism
@@ -209,7 +207,7 @@ def load_plugin():
         with plugin_path.open("rb") as file:
             plugin = plugin_pickle.load(file)
     except Exception as error:
-        return jsonify({"error": f"failed to deserialize plugin: {error}"}), 400
+        return jsonify({"error": "failed to deserialize plugin"}), 400
 
     if isinstance(plugin, type):
         plugin_class = plugin
@@ -339,7 +337,7 @@ def read_watermark(document_id: int | None = None):
         )
     except Exception as error:
         return jsonify(
-            {"error": f"Error when attempting to read watermark: {error}"}
+            {"error": "Error when attempting to read watermark"}
         ), 400
 
     return jsonify(
