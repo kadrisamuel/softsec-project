@@ -160,7 +160,7 @@ def create_watermark(document_id: int | None = None):
             destination_path.unlink(missing_ok=True)
         except Exception:
             pass
-        # TODO: Log the exception and return a generic db error
+        # TODO: Log the exception
         return jsonify(
             {"error": f"database error during version insert"}
         ), 503
@@ -311,8 +311,8 @@ def read_watermark(document_id: int | None = None):
                 {"id": document_id},
             ).first()
     except Exception as error:
-        # TODO: Log the exception and return a generic db error
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        # TODO: Log the exception 
+        return jsonify({"error": "database error"}), 503
 
     if not row:
         return jsonify({"error": "document not found"}), 404

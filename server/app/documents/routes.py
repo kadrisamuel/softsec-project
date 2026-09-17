@@ -95,9 +95,9 @@ def upload_document():
                 {"id": document_id},
             ).one()
     except Exception as error:
-        # TODO: Log the error, return a generic message, and remove the stored
+        # TODO: Log the error and remove the stored
         # file when the database transaction fails
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        return jsonify({"error": "database error"}), 503
 
     return jsonify(
         {
@@ -131,9 +131,8 @@ def list_documents():
                 {"uid": int(g.user["id"])},
             ).all()
     except Exception as error:
-        # TODO: Log the exception and return a generic error instead of exposing
-        # database details to the client.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        # TODO: Log the exception
+        return jsonify({"error": "database error"}), 503
 
     documents = [
         {
@@ -179,8 +178,8 @@ def list_versions(document_id: int | None = None):
                 {"glogin": str(g.user["login"]), "did": document_id},
             ).all()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        # TODO: Log the exception 
+        return jsonify({"error": "database error"}), 503
 
     versions = [
         {
@@ -214,8 +213,8 @@ def list_all_versions():
                 {"glogin": str(g.user["login"])},
             ).all()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        # TODO: Log the exception 
+        return jsonify({"error": "database error"}), 503
 
     versions = [
         {
@@ -255,8 +254,8 @@ def get_document(document_id: int | None = None):
                 {"id": document_id, "uid": int(g.user["id"])},
             ).first()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        # TODO: Log the exception
+        return jsonify({"error": "database error"}), 503
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -307,8 +306,8 @@ def get_version(link: str):
                 {"link": link},
             ).first()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        # TODO: Log the exception 
+        return jsonify({"error": "database error"}), 503
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -361,8 +360,8 @@ def delete_document(document_id: int | None = None):
             query = "SELECT * FROM Documents WHERE id = " + document_id
             row = connection.execute(text(query)).first()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        # TODO: Log the exception 
+        return jsonify({"error": "database error"}), 503
 
     if not row:
         return jsonify({"error": "document not found"}), 404
