@@ -367,16 +367,17 @@ def delete_document(document_id: int | None = None):
             or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
         )
     try:
-        document_id = document_id
+        document_id = int(document_id)
     except (TypeError, ValueError):
         return jsonify({"error": "document id required"}), 400
 
     try:
         with get_engine().connect() as connection:
-            # TODO: Replace this string concatenation with a bound parameter and
-            # enforce ownership in the query
-            query = "SELECT * FROM Documents WHERE id = " + document_id
-            row = connection.execute(text(query)).first()
+            # TODO: Enforce document ownership in the query
+            row = connection.execute(
+                text("SELECT * FROM Documents WHERE id = :id"),
+                {"id": document_id},
+            ).first()
     except Exception as error:
         current_app.logger.exception(
             "DB error while finding document for deletion id=%s",

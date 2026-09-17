@@ -99,6 +99,8 @@ def create_watermark(document_id: int | None = None):
         )
         if applicable is False:
             return jsonify({"error": "watermarking method not applicable"}), 400
+    except KeyError:
+        return jsonify({"error": "unknown watermarking method"}), 400
     except Exception as error:
         current_app.logger.exception(
             "Watermark applicability check failed for document id=%s",
@@ -226,8 +228,7 @@ def load_plugin():
     # TODO: Prevent path traversal and replace unsafe pickle/dill loading with a
     # trusted plugin installation mechanism
     if not plugin_path.exists():
-        # TODO: Replace the undefined `safe` value with a sanitized filename
-        return jsonify({"error": f"plugin file not found: {safe}"}), 404
+        return jsonify({"error": "plugin file not found"}), 404
 
     try:
         with plugin_path.open("rb") as file:
@@ -368,7 +369,7 @@ def read_watermark(document_id: int | None = None):
             pdf=str(file_path),
             key=key,
         )
-    except (ValueError, WatermarkingError):
+    except (KeyError, ValueError, WatermarkingError):
         return jsonify(
             {"error": "Error when attempting to read watermark"}
         ), 400
@@ -379,7 +380,7 @@ def read_watermark(document_id: int | None = None):
         )
         return jsonify(
             {"error": "Error when attempting to read watermark"}
-        ), 400
+        ), 500
 
     return jsonify(
         {
