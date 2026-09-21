@@ -10,9 +10,13 @@ from ..db import get_engine
 
 @bp.post("/create-user")
 def create_user():
-    # TODO: Validate the request body is JSON object, validate email,
-    # define password requirements
-    payload = request.get_json(silent=True) or {}
+    # TODO: Validate email, define password requirements
+    if not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json"}), 415
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
     email = (payload.get("email") or "").strip().lower()
     login = (payload.get("login") or "").strip()
     password = payload.get("password") or ""
@@ -41,10 +45,9 @@ def create_user():
             ).one()
     except IntegrityError:
         return jsonify({"error": "email or login already exists"}), 409
-    except Exception as error:
-        # TODO: Log exception and return a generic error. 
-        # Currently exposing database details to the client.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+    except Exception:
+        current_app.logger.exception("DB error while creating user")
+        return jsonify({"error": "user creation failed"}), 500
 
     return jsonify(
         {"id": user.id, "email": user.email, "login": user.login}
@@ -53,10 +56,13 @@ def create_user():
 
 @bp.post("/login")
 def login():
-    # TODO: Validate the request body is JSON, normalize email consistently, 
-    # add rate limiting for failed login attempts
-    payload = request.get_json(silent=True) or {}
-    email = (payload.get("email") or "").strip()
+    # TODO: Add rate limiting for failed login attempts
+    if not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json"}), 415
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+    email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     if not email or not password:
         return jsonify({"error": "email and password are required"}), 400
@@ -71,9 +77,8 @@ def login():
                 {"email": email},
             ).first()
     except Exception as error:
-        # TODO: Log exception and return a generic error. 
-        # Currently exposing database details to the client.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception("DB error during login")
+        return jsonify({"error": "Login failed"}), 500
 
     if not user or not check_password_hash(user.hpassword, password):
         return jsonify({"error": "invalid credentials"}), 401

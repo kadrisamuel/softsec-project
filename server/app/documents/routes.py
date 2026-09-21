@@ -95,9 +95,10 @@ def upload_document():
                 {"id": document_id},
             ).one()
     except Exception as error:
-        # TODO: Log the error, return a generic message, and remove the stored
+        # TODO: Log the error and remove the stored
         # file when the database transaction fails
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception("DB error while uploading document")
+        return jsonify({"error": "database error"}), 500
 
     return jsonify(
         {
@@ -131,9 +132,8 @@ def list_documents():
                 {"uid": int(g.user["id"])},
             ).all()
     except Exception as error:
-        # TODO: Log the exception and return a generic error instead of exposing
-        # database details to the client.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception("DB error while listing documents")
+        return jsonify({"error": "database error"}), 500
 
     documents = [
         {
@@ -179,8 +179,11 @@ def list_versions(document_id: int | None = None):
                 {"glogin": str(g.user["login"]), "did": document_id},
             ).all()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception(
+            "DB error while listing versions for document id=%s",
+            document_id,
+        )
+        return jsonify({"error": "database error"}), 500
 
     versions = [
         {
@@ -214,8 +217,8 @@ def list_all_versions():
                 {"glogin": str(g.user["login"])},
             ).all()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception("DB error while listing all versions")
+        return jsonify({"error": "database error"}), 500
 
     versions = [
         {
@@ -255,8 +258,11 @@ def get_document(document_id: int | None = None):
                 {"id": document_id, "uid": int(g.user["id"])},
             ).first()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception(
+            "DB error while retrieving document id=%s",
+            document_id,
+        )
+        return jsonify({"error": "database error"}), 500
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -267,10 +273,14 @@ def get_document(document_id: int | None = None):
             current_app.config["STORAGE_DIR"].resolve()
         )
     except Exception:
+        current_app.logger.exception(
+            "Path safety check failed for document id=%s",
+            document_id,
+        )
         return jsonify({"error": "document path invalid"}), 500
 
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 410
+        return jsonify({"error": "file missing on disk"}), 500
 
     response = send_file(
         file_path,
@@ -307,8 +317,11 @@ def get_version(link: str):
                 {"link": link},
             ).first()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception(
+            "DB error while retrieving version link=%s",
+            link,
+        )
+        return jsonify({"error": "database error"}), 500
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -319,10 +332,14 @@ def get_version(link: str):
             current_app.config["STORAGE_DIR"].resolve()
         )
     except Exception:
+        current_app.logger.exception(
+            "Path safety check failed for version link=%s",
+            link,
+        )
         return jsonify({"error": "document path invalid"}), 500
 
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 410
+        return jsonify({"error": "file missing on disk"}), 500
 
     response = send_file(
         file_path,
@@ -350,19 +367,23 @@ def delete_document(document_id: int | None = None):
             or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
         )
     try:
-        document_id = document_id
+        document_id = int(document_id)
     except (TypeError, ValueError):
         return jsonify({"error": "document id required"}), 400
 
     try:
         with get_engine().connect() as connection:
-            # TODO: Replace this string concatenation with a bound parameter and
-            # enforce ownership in the query
-            query = "SELECT * FROM Documents WHERE id = " + document_id
-            row = connection.execute(text(query)).first()
+            # TODO: Enforce document ownership in the query
+            row = connection.execute(
+                text("SELECT * FROM Documents WHERE id = :id"),
+                {"id": document_id},
+            ).first()
     except Exception as error:
-        # TODO: Log the exception and return a generic database error.
-        return jsonify({"error": f"database error: {str(error)}"}), 503
+        current_app.logger.exception(
+            "DB error while finding document for deletion id=%s",
+            document_id,
+        )
+        return jsonify({"error": "database error"}), 500
 
     if not row:
         return jsonify({"error": "document not found"}), 404
@@ -378,21 +399,19 @@ def delete_document(document_id: int | None = None):
                 file_path.unlink()
                 file_deleted = True
             except Exception as error:
-                delete_error = f"failed to delete file: {error}"
-                current_app.logger.warning(
-                    "Failed to delete file %s for doc id=%s: %s",
+                delete_error = "failed to delete file"
+                current_app.logger.exception(
+                    "Failed to delete file %s for doc id=%s",
                     file_path,
                     row.id,
-                    error,
                 )
         else:
             file_missing = True
     except RuntimeError as error:
         delete_error = str(error)
-        current_app.logger.error(
-            "Path safety check failed for doc id=%s: %s",
+        current_app.logger.exception(
+            "Path safety check failed for doc id=%s",
             row.id,
-            error,
         )
 
     try:
@@ -402,10 +421,13 @@ def delete_document(document_id: int | None = None):
                 {"id": document_id},
             )
     except Exception as error:
-        # TODO: Log the exception and return a generic database error
+        current_app.logger.exception(
+            "DB error while deleting document id=%s",
+            document_id,
+        )
         return jsonify(
-            {"error": f"database error during delete: {str(error)}"}
-        ), 503
+            {"error": "database error during delete"}
+        ), 500
 
     return jsonify(
         {

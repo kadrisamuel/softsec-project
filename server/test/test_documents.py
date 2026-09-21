@@ -210,10 +210,15 @@ def test_delete_document_deletes_database_record(tmp_path):
     assert response.status_code == 200
     assert response.json == {
         "deleted": True,
-        "id": "3",
+        "id": 3,
         "file_deleted": False,
         "file_missing": True,
         "note": None,
     }
     delete_connection = engine.begin.return_value.__enter__.return_value
-    assert delete_connection.execute.call_args.args[1] == {"id": "3"}
+    assert delete_connection.execute.call_args.args[1] == {"id": 3}
+
+
+# TODO: Test that missing and malformed delete-document IDs return 400.
+# TODO: Test that document database failures return 500.
+# TODO: Test that missing or invalid backing-file paths return 500.
