@@ -1,13 +1,14 @@
 import datetime as dt
 import hashlib
+from http import HTTPStatus
 from pathlib import Path
 
 from flask import current_app, g, jsonify, request, send_file
 from sqlalchemy import text
 
-from . import bp
 from ..auth.tokens import require_auth
 from ..db import get_engine
+from . import bp
 
 
 def _sha256_file(path: Path) -> str:
@@ -26,16 +27,12 @@ def _safe_resolve_under_storage(path: str, storage_root: Path) -> Path:
     file_path = file_path.resolve()
     if hasattr(file_path, "is_relative_to"):
         if not file_path.is_relative_to(storage_root):
-            raise RuntimeError(
-                f"path {file_path} escapes storage root {storage_root}"
-            )
+            raise RuntimeError(f"path {file_path} escapes storage root {storage_root}")
     else:
         try:
             file_path.relative_to(storage_root)
         except ValueError:
-            raise RuntimeError(
-                f"path {file_path} escapes storage root {storage_root}"
-            )
+            raise RuntimeError(f"path {file_path} escapes storage root {storage_root}")
     return file_path
 
 
@@ -43,16 +40,16 @@ def _safe_resolve_under_storage(path: str, storage_root: Path) -> Path:
 @require_auth
 def upload_document():
     if "file" not in request.files:
-        return jsonify({"error": "file is required (multipart/form-data)"}), 400
+        return jsonify(
+            {"error": "file is required (multipart/form-data)"}
+        ), HTTPStatus.BAD_REQUEST
     file = request.files["file"]
     if not file or file.filename == "":
-        return jsonify({"error": "empty filename"}), 400
+        return jsonify({"error": "empty filename"}), HTTPStatus.BAD_REQUEST
 
     # TODO: Sanitize the uploaded filename before using it in a filesystem path
     filename = file.filename
-    user_directory = (
-        current_app.config["STORAGE_DIR"] / "files" / g.user["login"]
-    )
+    user_directory = current_app.config["STORAGE_DIR"] / "files" / g.user["login"]
     user_directory.mkdir(parents=True, exist_ok=True)
 
     timestamp = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S%fZ")
@@ -94,11 +91,11 @@ def upload_document():
                 ),
                 {"id": document_id},
             ).one()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         # TODO: Log the error and remove the stored
         # file when the database transaction fails
         current_app.logger.exception("DB error while uploading document")
-        return jsonify({"error": "database error"}), 500
+        return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     return jsonify(
         {
@@ -112,7 +109,7 @@ def upload_document():
             "sha256": row.sha256_hex,
             "size": int(row.size),
         }
-    ), 201
+    ), HTTPStatus.CREATED
 
 
 @bp.get("/list-documents")
@@ -131,9 +128,9 @@ def list_documents():
                 ),
                 {"uid": int(g.user["id"])},
             ).all()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error while listing documents")
-        return jsonify({"error": "database error"}), 500
+        return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     documents = [
         {
@@ -149,7 +146,7 @@ def list_documents():
         }
         for row in rows
     ]
-    return jsonify({"documents": documents}), 200
+    return jsonify({"documents": documents}), HTTPStatus.OK
 
 
 @bp.get("/list-versions")
@@ -161,7 +158,7 @@ def list_versions(document_id: int | None = None):
         try:
             document_id = int(document_id)
         except (TypeError, ValueError):
-            return jsonify({"error": "document id required"}), 400
+            return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
     try:
         with get_engine().connect() as connection:
@@ -178,12 +175,12 @@ def list_versions(document_id: int | None = None):
                 ),
                 {"glogin": str(g.user["login"]), "did": document_id},
             ).all()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while listing versions for document id=%s",
             document_id,
         )
-        return jsonify({"error": "database error"}), 500
+        return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     versions = [
         {
@@ -196,7 +193,7 @@ def list_versions(document_id: int | None = None):
         }
         for row in rows
     ]
-    return jsonify({"versions": versions}), 200
+    return jsonify({"versions": versions}), HTTPStatus.OK
 
 
 @bp.get("/list-all-versions")
@@ -216,9 +213,9 @@ def list_all_versions():
                 ),
                 {"glogin": str(g.user["login"])},
             ).all()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error while listing all versions")
-        return jsonify({"error": "database error"}), 500
+        return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     versions = [
         {
@@ -230,7 +227,7 @@ def list_all_versions():
         }
         for row in rows
     ]
-    return jsonify({"versions": versions}), 200
+    return jsonify({"versions": versions}), HTTPStatus.OK
 
 
 @bp.get("/get-document")
@@ -242,7 +239,7 @@ def get_document(document_id: int | None = None):
         try:
             document_id = int(document_id)
         except (TypeError, ValueError):
-            return jsonify({"error": "document id required"}), 400
+            return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
     try:
         with get_engine().connect() as connection:
@@ -257,30 +254,32 @@ def get_document(document_id: int | None = None):
                 ),
                 {"id": document_id, "uid": int(g.user["id"])},
             ).first()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while retrieving document id=%s",
             document_id,
         )
-        return jsonify({"error": "database error"}), 500
+        return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not row:
-        return jsonify({"error": "document not found"}), 404
+        return jsonify({"error": "document not found"}), HTTPStatus.NOT_FOUND
 
     file_path = Path(row.path)
     try:
-        file_path.resolve().relative_to(
-            current_app.config["STORAGE_DIR"].resolve()
-        )
-    except Exception:
+        file_path.resolve().relative_to(current_app.config["STORAGE_DIR"].resolve())
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "Path safety check failed for document id=%s",
             document_id,
         )
-        return jsonify({"error": "document path invalid"}), 500
+        return jsonify(
+            {"error": "document path invalid"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 500
+        return jsonify(
+            {"error": "file missing on disk"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     response = send_file(
         file_path,
@@ -316,30 +315,32 @@ def get_version(link: str):
                 ),
                 {"link": link},
             ).first()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while retrieving version link=%s",
             link,
         )
-        return jsonify({"error": "database error"}), 500
+        return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not row:
-        return jsonify({"error": "document not found"}), 404
+        return jsonify({"error": "document not found"}), HTTPStatus.NOT_FOUND
 
     file_path = Path(row.path)
     try:
-        file_path.resolve().relative_to(
-            current_app.config["STORAGE_DIR"].resolve()
-        )
-    except Exception:
+        file_path.resolve().relative_to(current_app.config["STORAGE_DIR"].resolve())
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "Path safety check failed for version link=%s",
             link,
         )
-        return jsonify({"error": "document path invalid"}), 500
+        return jsonify(
+            {"error": "document path invalid"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 500
+        return jsonify(
+            {"error": "file missing on disk"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     response = send_file(
         file_path,
@@ -369,7 +370,7 @@ def delete_document(document_id: int | None = None):
     try:
         document_id = int(document_id)
     except (TypeError, ValueError):
-        return jsonify({"error": "document id required"}), 400
+        return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
     try:
         with get_engine().connect() as connection:
@@ -378,15 +379,15 @@ def delete_document(document_id: int | None = None):
                 text("SELECT * FROM Documents WHERE id = :id"),
                 {"id": document_id},
             ).first()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while finding document for deletion id=%s",
             document_id,
         )
-        return jsonify({"error": "database error"}), 500
+        return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not row:
-        return jsonify({"error": "document not found"}), 404
+        return jsonify({"error": "document not found"}), HTTPStatus.NOT_FOUND
 
     storage_root = Path(current_app.config["STORAGE_DIR"])
     file_deleted = False
@@ -398,7 +399,7 @@ def delete_document(document_id: int | None = None):
             try:
                 file_path.unlink()
                 file_deleted = True
-            except Exception as error:
+            except Exception:  # pylint: disable=broad-exception-caught
                 delete_error = "failed to delete file"
                 current_app.logger.exception(
                     "Failed to delete file %s for doc id=%s",
@@ -420,14 +421,14 @@ def delete_document(document_id: int | None = None):
                 text("DELETE FROM Documents WHERE id = :id"),
                 {"id": document_id},
             )
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while deleting document id=%s",
             document_id,
         )
         return jsonify(
             {"error": "database error during delete"}
-        ), 500
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     return jsonify(
         {
@@ -437,4 +438,4 @@ def delete_document(document_id: int | None = None):
             "file_missing": file_missing,
             "note": delete_error,
         }
-    ), 200
+    ), HTTPStatus.OK

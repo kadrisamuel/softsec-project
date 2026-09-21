@@ -1,5 +1,6 @@
 import hashlib
 import pickle as standard_pickle
+from http import HTTPStatus
 from pathlib import Path
 
 try:
@@ -11,11 +12,11 @@ from flask import current_app, jsonify, request
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
+from ..auth.tokens import require_auth
+from ..db import get_engine
 from . import bp
 from . import utils as watermarking_utils
 from .method import WatermarkingError, WatermarkingMethod
-from ..auth.tokens import require_auth
-from ..db import get_engine
 
 
 @bp.post("/create-watermark")
@@ -31,7 +32,7 @@ def create_watermark(document_id: int | None = None):
     try:
         document_id = document_id
     except (TypeError, ValueError):
-        return jsonify({"error": "document id required"}), 400
+        return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
     payload = request.get_json(silent=True) or {}
     method = payload.get("method")
@@ -43,7 +44,9 @@ def create_watermark(document_id: int | None = None):
     try:
         document_id = int(document_id)
     except (TypeError, ValueError):
-        return jsonify({"error": "document_id (int) is required"}), 400
+        return jsonify(
+            {"error": "document_id (int) is required"}
+        ), HTTPStatus.BAD_REQUEST
     if (
         not method
         or not intended_for
@@ -52,7 +55,7 @@ def create_watermark(document_id: int | None = None):
     ):
         return jsonify(
             {"error": "method, intended_for, secret, and key are required"}
-        ), 400
+        ), HTTPStatus.BAD_REQUEST
 
     try:
         with get_engine().connect() as connection:
@@ -68,12 +71,14 @@ def create_watermark(document_id: int | None = None):
                 ),
                 {"id": document_id},
             ).first()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error during watermark creation")
-        return jsonify({"error": "Watermark creation failed"}), 500
+        return jsonify(
+            {"error": "Watermark creation failed"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not row:
-        return jsonify({"error": "document not found"}), 404
+        return jsonify({"error": "document not found"}), HTTPStatus.NOT_FOUND
 
     storage_root = Path(current_app.config["STORAGE_DIR"]).resolve()
     file_path = Path(row.path)
@@ -87,9 +92,13 @@ def create_watermark(document_id: int | None = None):
             "Path safety check failed during watermark creation for document id=%s",
             document_id,
         )
-        return jsonify({"error": "document path invalid"}), 500
+        return jsonify(
+            {"error": "document path invalid"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 500
+        return jsonify(
+            {"error": "file missing on disk"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     try:
         applicable = watermarking_utils.is_watermarking_applicable(
@@ -98,15 +107,19 @@ def create_watermark(document_id: int | None = None):
             position=position,
         )
         if applicable is False:
-            return jsonify({"error": "watermarking method not applicable"}), 400
+            return jsonify(
+                {"error": "watermarking method not applicable"}
+            ), HTTPStatus.BAD_REQUEST
     except KeyError:
-        return jsonify({"error": "unknown watermarking method"}), 400
-    except Exception as error:
+        return jsonify({"error": "unknown watermarking method"}), HTTPStatus.BAD_REQUEST
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "Watermark applicability check failed for document id=%s",
             document_id,
         )
-        return jsonify({"error": "watermark applicability check failed"}), 500
+        return jsonify(
+            {"error": "watermark applicability check failed"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     try:
         watermarked_bytes = watermarking_utils.apply_watermark(
@@ -120,13 +133,17 @@ def create_watermark(document_id: int | None = None):
             not isinstance(watermarked_bytes, (bytes, bytearray))
             or len(watermarked_bytes) == 0
         ):
-            return jsonify({"error": "watermarking produced no output"}), 500
-    except Exception as error:
+            return jsonify(
+                {"error": "watermarking produced no output"}
+            ), HTTPStatus.INTERNAL_SERVER_ERROR
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "Watermark creation failed for document id=%s",
             document_id,
         )
-        return jsonify({"error": "watermarking failed"}), 500
+        return jsonify(
+            {"error": "watermarking failed"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     base_name = Path(row.name or file_path.name).stem
     intended_slug = secure_filename(intended_for)
@@ -138,14 +155,14 @@ def create_watermark(document_id: int | None = None):
     try:
         with destination_path.open("wb") as file:
             file.write(watermarked_bytes)
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "Failed to write watermarked file for document id=%s",
             document_id,
         )
         return jsonify(
             {"error": "failed to write watermarked file"}
-        ), 500
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     link = hashlib.sha1(filename.encode("utf-8")).hexdigest()
     try:
@@ -173,21 +190,21 @@ def create_watermark(document_id: int | None = None):
             version_id = int(
                 connection.execute(text("SELECT LAST_INSERT_ID()")).scalar()
             )
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while inserting watermark version for document id=%s",
             document_id,
         )
         try:
             destination_path.unlink(missing_ok=True)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             current_app.logger.exception(
                 "Failed to remove watermarked file after DB error: %s",
                 destination_path,
             )
         return jsonify(
             {"error": f"database error during version insert"}
-        ), 500
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     return jsonify(
         {
@@ -200,7 +217,7 @@ def create_watermark(document_id: int | None = None):
             "filename": filename,
             "size": len(watermarked_bytes),
         }
-    ), 201
+    ), HTTPStatus.CREATED
 
 
 @bp.post("/load-plugin")
@@ -208,33 +225,35 @@ def create_watermark(document_id: int | None = None):
 def load_plugin():
     payload = request.get_json(silent=True) or {}
     filename = (payload.get("filename") or "").strip()
-    overwrite = bool(payload.get("overwrite", False)) #unused
+    overwrite = bool(payload.get("overwrite", False))  # unused
 
     if not filename:
-        return jsonify({"error": "filename is required"}), 400
+        return jsonify({"error": "filename is required"}), HTTPStatus.BAD_REQUEST
 
     storage_root = Path(current_app.config["STORAGE_DIR"])
     plugins_directory = storage_root / "files" / "plugins"
     try:
         plugins_directory.mkdir(parents=True, exist_ok=True)
         plugin_path = plugins_directory / filename
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "Failed to prepare plugin path for filename=%s",
             filename,
         )
-        return jsonify({"error": "plugin path error"}), 500
+        return jsonify({"error": "plugin path error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     # TODO: Prevent path traversal and replace unsafe pickle/dill loading with a
     # trusted plugin installation mechanism
     if not plugin_path.exists():
-        return jsonify({"error": "plugin file not found"}), 404
+        return jsonify({"error": "plugin file not found"}), HTTPStatus.NOT_FOUND
 
     try:
         with plugin_path.open("rb") as file:
             plugin = plugin_pickle.load(file)
-    except Exception as error:
-        return jsonify({"error": "failed to deserialize plugin"}), 400
+    except Exception:  # pylint: disable=broad-exception-caught
+        return jsonify(
+            {"error": "failed to deserialize plugin"}
+        ), HTTPStatus.BAD_REQUEST
 
     if isinstance(plugin, type):
         plugin_class = plugin
@@ -248,8 +267,10 @@ def load_plugin():
     )
     if not method_name or not isinstance(method_name, str):
         return jsonify(
-            {"error": "plugin class must define a readable name (class.__name__ or .name)"}
-        ), 400
+            {
+                "error": "plugin class must define a readable name (class.__name__ or .name)"
+            }
+        ), HTTPStatus.BAD_REQUEST
 
     has_api = all(
         hasattr(plugin_class, attribute)
@@ -267,7 +288,7 @@ def load_plugin():
                     "(add_watermark/read_secret)"
                 )
             }
-        ), 400
+        ), HTTPStatus.BAD_REQUEST
 
     watermarking_utils.METHODS[method_name] = plugin_class()
     return jsonify(
@@ -281,7 +302,7 @@ def load_plugin():
             ),
             "methods_count": len(watermarking_utils.METHODS),
         }
-    ), 201
+    ), HTTPStatus.CREATED
 
 
 @bp.get("/get-watermarking-methods")
@@ -294,7 +315,7 @@ def get_watermarking_methods():
                 "description": watermarking_utils.get_method(method).get_usage(),
             }
         )
-    return jsonify({"methods": methods, "count": len(methods)}), 200
+    return jsonify({"methods": methods, "count": len(methods)}), HTTPStatus.OK
 
 
 @bp.post("/read-watermark")
@@ -310,7 +331,7 @@ def read_watermark(document_id: int | None = None):
     try:
         document_id = document_id
     except (TypeError, ValueError):
-        return jsonify({"error": "document id required"}), 400
+        return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
     payload = request.get_json(silent=True) or {}
     method = payload.get("method")
@@ -320,9 +341,13 @@ def read_watermark(document_id: int | None = None):
     try:
         document_id = int(document_id)
     except (TypeError, ValueError):
-        return jsonify({"error": "document_id (int) is required"}), 400
+        return jsonify(
+            {"error": "document_id (int) is required"}
+        ), HTTPStatus.BAD_REQUEST
     if not method or not isinstance(key, str):
-        return jsonify({"error": "method, and key are required"}), 400
+        return jsonify(
+            {"error": "method, and key are required"}
+        ), HTTPStatus.BAD_REQUEST
 
     try:
         with get_engine().connect() as connection:
@@ -337,15 +362,15 @@ def read_watermark(document_id: int | None = None):
                 ),
                 {"id": document_id},
             ).first()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while retrieving document for watermark read id=%s",
             document_id,
         )
-        return jsonify({"error": "database error"}), 500
+        return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not row:
-        return jsonify({"error": "document not found"}), 404
+        return jsonify({"error": "document not found"}), HTTPStatus.NOT_FOUND
 
     storage_root = Path(current_app.config["STORAGE_DIR"]).resolve()
     file_path = Path(row.path)
@@ -359,9 +384,13 @@ def read_watermark(document_id: int | None = None):
             "Path safety check failed during watermark read for document id=%s",
             document_id,
         )
-        return jsonify({"error": "document path invalid"}), 500
+        return jsonify(
+            {"error": "document path invalid"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
     if not file_path.exists():
-        return jsonify({"error": "file missing on disk"}), 500
+        return jsonify(
+            {"error": "file missing on disk"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     try:
         secret = watermarking_utils.read_watermark(
@@ -372,15 +401,15 @@ def read_watermark(document_id: int | None = None):
     except (KeyError, ValueError, WatermarkingError):
         return jsonify(
             {"error": "Error when attempting to read watermark"}
-        ), 400
-    except Exception:
+        ), HTTPStatus.BAD_REQUEST
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "Unexpected error while reading watermark for document id=%s",
             document_id,
         )
         return jsonify(
             {"error": "Error when attempting to read watermark"}
-        ), 500
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     return jsonify(
         {
@@ -389,4 +418,4 @@ def read_watermark(document_id: int | None = None):
             "method": method,
             "position": position,
         }
-    ), 200
+    ), HTTPStatus.OK
