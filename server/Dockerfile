@@ -11,7 +11,7 @@ COPY pyproject.toml /app/pyproject.toml
 COPY app /app/app
 RUN pip install --no-cache-dir -e .
 
-COPY wsgi.py /app/wsgi.py
+COPY entrypoint.py /app/entrypoint.py
 
 # Initialize second flag
 COPY flag /app/flag
@@ -25,4 +25,4 @@ USER pyu
 EXPOSE 5000
 
 # Default command runs the web server
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "wsgi:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "entrypoint:app"]
