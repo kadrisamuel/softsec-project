@@ -8,7 +8,7 @@ import pytest
 
 # --------- collect all methods from the registry ----------
 try:
-    wm = importlib.import_module("watermarking_utils")
+    wm = importlib.import_module("app.watermarking.utils")
     METHODS = getattr(wm, "METHODS", {})
 except Exception:  # registry/module missing
     METHODS = {}
@@ -19,7 +19,10 @@ for name, impl in (METHODS or {}).items():
         CASES.append((str(name), impl))
 
 if not CASES:
-    pytest.skip("No watermarking methods registered in watermarking_utils.METHODS", allow_module_level=True)
+    pytest.skip(
+        "No watermarking methods registered in app.watermarking.utils.METHODS",
+        allow_module_level=True,
+    )
 
 
 # --------- fixtures ----------
@@ -79,4 +82,3 @@ class TestAllWatermarkingMethods:
         extracted = wm_impl.read_secret(out_pdf, key=key)
         assert isinstance(extracted, str), f"{method_name}: read_secret must return str"
         assert extracted == secret, f"{method_name}: read_secret should return the exact embedded secret"
-

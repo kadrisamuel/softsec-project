@@ -36,13 +36,13 @@ import json
 import os
 import re
 
-from watermarking_method import (
+from .method import (
     PdfSource,
     WatermarkingMethod,
     load_pdf_bytes,
 )
-from add_after_eof import AddAfterEOF
-from unsafe_bash_bridge_append_eof import UnsafeBashBridgeAppendEOF
+from .add_after_eof import AddAfterEOF
+from .unsafe_bash_bridge_append_eof import UnsafeBashBridgeAppendEOF
 
 # --------------------
 # Method registry
@@ -249,4 +249,3 @@ __all__ = [
     "explore_pdf",
     "is_watermarking_applicable"
 ]
-

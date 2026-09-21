@@ -27,7 +27,7 @@ import hashlib
 import hmac
 import json
 
-from watermarking_method import (
+from .method import (
     InvalidKeyError,
     SecretNotFoundError,
     WatermarkingError,
@@ -179,4 +179,3 @@ class AddAfterEOF(WatermarkingMethod):
 
 
 __all__ = ["AddAfterEOF"]
-

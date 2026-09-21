@@ -6,14 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Copy project description, to install dependencies
+# Copy the package and install runtime dependencies
 COPY pyproject.toml /app/pyproject.toml
-
-# Copy sources
-COPY src /app/src
-
-# Install runtime dependencies
+COPY app /app/app
 RUN pip install --no-cache-dir -e .
+
+COPY entrypoint.py /app/entrypoint.py
 
 # Initialize second flag
 COPY flag /app/flag
@@ -27,4 +25,4 @@ USER pyu
 EXPOSE 5000
 
 # Default command runs the web server
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "server:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "entrypoint:app"]

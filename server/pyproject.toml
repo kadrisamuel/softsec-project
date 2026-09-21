@@ -25,4 +25,11 @@ testpaths = ["test/"]
 python_files = ["test_*.py"]
 
 [project.scripts]
-pdfwm = "watermarking_cli:main"                 # now you can run `pdfwm methods`
+pdfwm = "app.watermarking.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pyrefly]
+search-path = ["."]

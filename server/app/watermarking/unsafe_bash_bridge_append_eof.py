@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Final
 import subprocess
 
-from watermarking_method import (
+from .method import (
     InvalidKeyError,
     SecretNotFoundError,
     WatermarkingError,
@@ -75,4 +75,3 @@ class UnsafeBashBridgeAppendEOF(WatermarkingMethod):
 
 
 __all__ = ["UnsafeBashBridgeAppendEOF"]
-
