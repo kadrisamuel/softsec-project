@@ -44,5 +44,5 @@ jobs:
       - name: Install dependencies
         run: pip install -e server[dev]
 
-      - name: Run Pylint
-        run: pylint server/app/
+      - name: Run Pyright
+        run: pyright server/app/
