@@ -24,7 +24,25 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install pylint
+        run: pip install -e server[dev]
 
       - name: Run Pylint
         run: pylint server/app/
+
+  # Pyright
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -e server[dev]
+
+      - name: Run Pyright
+        run: pyright server/app/
