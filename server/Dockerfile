@@ -18,8 +18,12 @@ COPY flag /app/flag
 RUN --mount=type=secret,id=flag_2 sed -i "s/REPLACE_THIS_STRING_WITH_SERVER_FLAG/$(cat /run/secrets/flag_2)/g" /app/flag
 RUN chmod 400 /app/flag
 
-# Create and switch to non-root user
+# Create and switch to non-root user pyu
+# Let pyu write to /app/storage only
 RUN adduser --system --no-create-home pyu
+RUN mkdir -p /app/storage \
+    && chown -R pyu:nogroup /app/storage \
+    && chmod 750 /app/storage
 USER pyu
 
 EXPOSE 5000
