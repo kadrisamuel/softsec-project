@@ -16,7 +16,8 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
 	"pylint>=4.0.0",
-	"pyright==1.1.414"
+	"pyright==1.1.414",
+	"pyscan-rs==2.1.3"
 ]
 
 [tool.pytest.ini_options]
