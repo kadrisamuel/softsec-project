@@ -1,4 +1,4 @@
-name: Scheduled dependency vulnerability scanning
+name: Dependency vulnerability scanning
 
 on:
   schedule:
