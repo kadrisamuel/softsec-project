@@ -3,6 +3,12 @@ name: Scheduled dependency vulnerability scanning
 on:
   schedule:
     - cron: "0 0,6,12 * * *"
+  push:
+    paths:
+      - 'server/pyproject.toml'
+  pull_request:
+    paths:
+      - 'server/pyproject.toml'
 
 jobs:
     pyscan:

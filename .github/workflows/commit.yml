@@ -2,8 +2,6 @@ name: Generic checks for commits and pull requests
 
 on:
   push:
-    branches-ignore:
-      - main
     paths:
       - '**/*.py'
   pull_request:
