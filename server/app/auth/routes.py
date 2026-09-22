@@ -1,27 +1,35 @@
+from http import HTTPStatus
+
 from flask import current_app, jsonify, request
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from ..db import get_engine
 from . import bp
 from .tokens import create_token
-from ..db import get_engine
 
 
 @bp.post("/create-user")
 def create_user():
     # TODO: Validate email, define password requirements
     if not request.is_json:
-        return jsonify({"error": "Content-Type must be application/json"}), 415
+        return jsonify(
+            {"error": "Content-Type must be application/json"}
+        ), HTTPStatus.UNSUPPORTED_MEDIA_TYPE
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
-        return jsonify({"error": "Request body must be a JSON object"}), 400
+        return jsonify(
+            {"error": "Request body must be a JSON object"}
+        ), HTTPStatus.BAD_REQUEST
 
     email = (payload.get("email") or "").strip().lower()
     login = (payload.get("login") or "").strip()
     password = payload.get("password") or ""
     if not email or not login or not password:
-        return jsonify({"error": "email, login, and password are required"}), 400
+        return jsonify(
+            {"error": "email, login, and password are required"}
+        ), HTTPStatus.BAD_REQUEST
 
     password_hash = generate_password_hash(password)
 
@@ -44,28 +52,36 @@ def create_user():
                 {"id": user_id},
             ).one()
     except IntegrityError:
-        return jsonify({"error": "email or login already exists"}), 409
-    except Exception:
+        return jsonify({"error": "email or login already exists"}), HTTPStatus.CONFLICT
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error while creating user")
-        return jsonify({"error": "user creation failed"}), 500
+        return jsonify(
+            {"error": "user creation failed"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     return jsonify(
         {"id": user.id, "email": user.email, "login": user.login}
-    ), 201
+    ), HTTPStatus.CREATED
 
 
 @bp.post("/login")
 def login():
     # TODO: Add rate limiting for failed login attempts
     if not request.is_json:
-        return jsonify({"error": "Content-Type must be application/json"}), 415
+        return jsonify(
+            {"error": "Content-Type must be application/json"}
+        ), HTTPStatus.UNSUPPORTED_MEDIA_TYPE
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
-        return jsonify({"error": "Request body must be a JSON object"}), 400
+        return jsonify(
+            {"error": "Request body must be a JSON object"}
+        ), HTTPStatus.BAD_REQUEST
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     if not email or not password:
-        return jsonify({"error": "email and password are required"}), 400
+        return jsonify(
+            {"error": "email and password are required"}
+        ), HTTPStatus.BAD_REQUEST
 
     try:
         with get_engine().connect() as connection:
@@ -76,12 +92,12 @@ def login():
                 ),
                 {"email": email},
             ).first()
-    except Exception as error:
+    except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error during login")
-        return jsonify({"error": "Login failed"}), 500
+        return jsonify({"error": "Login failed"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not user or not check_password_hash(user.hpassword, password):
-        return jsonify({"error": "invalid credentials"}), 401
+        return jsonify({"error": "invalid credentials"}), HTTPStatus.UNAUTHORIZED
 
     token = create_token(int(user.id), user.login, user.email)
     return jsonify(
@@ -90,4 +106,4 @@ def login():
             "token_type": "bearer",
             "expires_in": current_app.config["TOKEN_TTL_SECONDS"],
         }
-    ), 200
+    ), HTTPStatus.OK
