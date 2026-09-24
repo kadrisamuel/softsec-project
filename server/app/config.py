@@ -1,7 +1,12 @@
+"""Application configuration options"""
+
 import os
 from pathlib import Path
 
-class Config:
+
+class Config:  # pylint: disable=too-few-public-methods
+    """Environment-sourced configuration options"""
+
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
     SALT = os.environ.get("SALT", "tatou-auth")
     STORAGE_DIR = Path(os.environ.get("STORAGE_DIR", "./storage")).resolve()
@@ -19,3 +24,4 @@ class Config:
     ENABLE_AUTH_ROUTES = (os.environ.get("ENABLE_AUTH_ROUTES", "false").lower() == "true")
     ENABLE_DOCUMENT_ROUTES = (os.environ.get("ENABLE_DOCUMENT_ROUTES", "false").lower() == "true")
     ENABLE_WATERMARKING_ROUTES = (os.environ.get("ENABLE_WATERMARKING_ROUTES", "false").lower() == "true")
+    ENABLE_RMAP_ROUTES = (os.environ.get("ENABLE_RMAP_ROUTES", "false").lower() == "true")

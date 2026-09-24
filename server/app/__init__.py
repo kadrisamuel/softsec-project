@@ -31,4 +31,8 @@ def create_app(config_class=Config):
         from .watermarking import bp as watermarking_bp
         app.register_blueprint(watermarking_bp)
 
+    if app.config.get("ENABLE_RMAP_ROUTES", False):
+        from .rmap import bp as rmap_bp
+        app.register_blueprint(rmap_bp)
+
     return app
