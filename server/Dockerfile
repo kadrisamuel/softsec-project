@@ -6,6 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Copy public keys
+COPY keys/Public-keys-20260914/*.asc /app/pub-keys/
+
 # Copy the package and install runtime dependencies
 COPY pyproject.toml /app/pyproject.toml
 COPY app /app/app
