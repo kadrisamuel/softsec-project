@@ -15,7 +15,7 @@ except Exception:  # registry/module missing
 
 CASES: list[tuple[str, object]] = []
 for name, impl in (METHODS or {}).items():
-    if not name == "UnsafeBashBridgeAppendEOF":
+    if name != "bash-bridge-eof":
         CASES.append((str(name), impl))
 
 if not CASES:
