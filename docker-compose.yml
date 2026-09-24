@@ -12,6 +12,7 @@ services:
     secrets:
       - private_key
       - private_key_pass
+      - group_pdf
     volumes:
       - user-files:/app/storage
     environment:
@@ -61,5 +62,7 @@ secrets:
     file: private.key
   private_key_pass:
     environment: PRIVATE_KEY_PASS
+  group_pdf:
+    file: Group_02.pdf
   flag_2:
     environment: FLAG_2
