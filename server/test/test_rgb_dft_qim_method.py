@@ -19,6 +19,7 @@ def method():
         "0" * 31,
         "0" * 33,
         "g" * 32,
+        "A" * 32,
         123,
         None,
     ],
@@ -35,7 +36,6 @@ def test_secret_validation_rejects_invalid_values(method, secret):
     "secret",
     [
         VALID_SECRET,
-        VALID_SECRET.upper(),
     ],
 )
 def test_secret_validation_accepts_hex_values(method, secret):

@@ -29,10 +29,10 @@ class RGBDFTQIMWatermark(WatermarkingMethod):
         """The secret is the information embedded in the PDF and recovered later. 
         Here, it is a 128-bit watermark identifier represented by 32 hex characters"""
         if not isinstance(secret, str) or re.fullmatch(
-            r"[0-9a-fA-F]{32}", secret
+            r"[0-9a-f]{32}", secret
         ) is None:
             raise ValueError(
-                "Secret must contain exactly 32 hexadecimal characters"
+                "Secret must contain exactly 32 lowercase hexadecimal characters"
             )
 
     @staticmethod
