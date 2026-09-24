@@ -1,5 +1,5 @@
 # Server image: minimal Flask + Gunicorn
-FROM python:3.12-slim
+FROM python:3.12-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
