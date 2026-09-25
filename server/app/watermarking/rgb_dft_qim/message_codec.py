@@ -2,6 +2,7 @@ from reedsolo import ReedSolomonError, RSCodec
 
 from .key_schedule import derive_keys
 from .payload import decode_payload, encode_payload
+from .interleaving import deinterleave_bytes, interleave_bytes
 
 _PARITY_BYTES = 20
 _RS_CODEC = RSCodec(_PARITY_BYTES)
@@ -10,14 +11,21 @@ _RS_CODEC = RSCodec(_PARITY_BYTES)
 def encode_message(secret: str, master_key: str) -> bytes:
     keys = derive_keys(master_key)
     payload = encode_payload(secret, keys.authentication)
-    return bytes(_RS_CODEC.encode(payload))
+    corrected = bytes(_RS_CODEC.encode(payload))
+    return interleave_bytes(corrected, keys.interleaving)
 
 
 def decode_message(message: bytes, master_key: str) -> str:
     keys = derive_keys(master_key)
+    deinterleaved = deinterleave_bytes(
+        message,
+        keys.interleaving,
+    )
 
     try:
-        decoded_payload = bytes(_RS_CODEC.decode(message)[0])
+        decoded_payload = bytes(
+            _RS_CODEC.decode(deinterleaved)[0]
+        )
     except ReedSolomonError as exc:
         raise ValueError("Message error correction failed") from exc
 

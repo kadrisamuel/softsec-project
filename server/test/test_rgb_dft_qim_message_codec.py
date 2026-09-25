@@ -19,7 +19,7 @@ def test_message_roundtrip():
 def test_decode_message_rejects_wrong_master_key():
     message = encode_message(SECRET, MASTER_KEY)
 
-    with pytest.raises(ValueError, match="authentication failed"):
+    with pytest.raises(ValueError):
         decode_message(message, "different-master-key")
 
 
