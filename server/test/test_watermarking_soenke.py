@@ -39,9 +39,7 @@ def key() -> str:
 def prng() -> Random:
     """PRNG shared between tests"""
 
-    random = Random()
-    random.seed("test-seed")
-    return random
+    return Random("test-seed")
 
 
 @pytest.fixture(scope="session")
@@ -78,6 +76,13 @@ class TestWatermarkingSoenke:
 
         derived_key = _derive_key(key, prng)
         assert len(derived_key) == 32
+
+    def test_key_derive_determinism(self, key: str):
+        """Check derive key determinism"""
+
+        first_key = _derive_key(key, Random("test-seed"))
+        second_key = _derive_key(key, Random("test-seed"))
+        assert first_key == second_key
 
     # ---------- Payload preparation ----------
     def test_payload_prepare(self, key: str, secret: str, nonce: bytes, prng: Random):
