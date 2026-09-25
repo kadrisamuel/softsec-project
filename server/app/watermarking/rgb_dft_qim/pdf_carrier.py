@@ -277,7 +277,7 @@ def extract_bytes_from_pdf(
             )
 
         if tile_candidates:
-             page_candidates.append(
+            page_candidates.append(
                 _majority_vote_bytes(tile_candidates)
         )
 
