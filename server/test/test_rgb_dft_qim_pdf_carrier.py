@@ -13,6 +13,8 @@ from app.watermarking.rgb_dft_qim.pdf_carrier import (
     _render_first_page,
     _majority_vote_bytes,
     _build_image_pdf,
+    _render_pages,
+    _build_image_pdf_pages,
 )
 from app.watermarking.rgb_dft_qim.dft_qim import extract_bytes
 
@@ -264,6 +266,76 @@ def test_extraction_survives_jpeg_recompression():
 
     extracted_message = extract_bytes_from_pdf(
         compressed_pdf,
+        len(message),
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    assert decode_message(
+        extracted_message,
+        MASTER_KEY,
+    ) == SECRET
+
+
+def _create_multi_page_test_pdf(
+    page_count: int,
+) -> bytes:
+    with pymupdf.open() as document:
+        for page_number in range(page_count):
+            page = document.new_page(
+                width=300,
+                height=300,
+            )
+            page.insert_text(
+                (50, 150),
+                f"Test page {page_number + 1}",
+                fontsize=20,
+            )
+
+        return document.tobytes()
+
+
+def test_watermarking_preserves_all_pages():
+    source_pdf = _create_multi_page_test_pdf(2)
+    keys = derive_keys(MASTER_KEY)
+    message = encode_message(SECRET, MASTER_KEY)
+
+    watermarked_pdf = embed_bytes_in_pdf(
+        source_pdf,
+        message,
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    with pymupdf.open(
+        stream=watermarked_pdf,
+        filetype="pdf",
+    ) as document:
+        assert document.page_count == 2
+
+
+def test_extraction_survives_destroyed_first_page():
+    source_pdf = _create_multi_page_test_pdf(3)
+    keys = derive_keys(MASTER_KEY)
+    message = encode_message(SECRET, MASTER_KEY)
+
+    watermarked_pdf = embed_bytes_in_pdf(
+        source_pdf,
+        message,
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    rendered_pages = _render_pages(watermarked_pdf)
+    first_image, _, _ = rendered_pages[0]
+    first_image[:] = 0
+
+    damaged_pdf = _build_image_pdf_pages(
+        rendered_pages
+    )
+
+    extracted_message = extract_bytes_from_pdf(
+        damaged_pdf,
         len(message),
         keys.qim_positions,
         keys.qim_dither,

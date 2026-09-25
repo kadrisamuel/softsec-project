@@ -10,10 +10,12 @@ _RENDER_DPI = 300
 _BLOCK_SIZE = 512
 
 
-def _render_first_page(
+def _render_pages(
     pdf: bytes,
-) -> tuple[np.ndarray, float, float]:
-    """Render the first PDF page as RGB pixels while preserving its page size."""
+) -> list[tuple[np.ndarray, float, float]]:
+    """Render every PDF page as RGB pixels with its original page size."""
+    rendered_pages = []
+
     with pymupdf.open(
         stream=pdf,
         filetype="pdf",
@@ -21,26 +23,37 @@ def _render_first_page(
         if document.page_count == 0:
             raise ValueError("PDF must contain at least one page")
 
-        page = document[0]
-        page_width = page.rect.width
-        page_height = page.rect.height
+        for page in document:
+            pixmap = page.get_pixmap(
+                dpi=_RENDER_DPI,
+                colorspace=pymupdf.csRGB,
+                alpha=False,
+            )
+            image = np.frombuffer(
+                pixmap.samples,
+                dtype=np.uint8,
+            ).reshape(
+                pixmap.height,
+                pixmap.width,
+                3,
+            ).copy()
 
-        pixmap = page.get_pixmap(
-            dpi=_RENDER_DPI,
-            colorspace=pymupdf.csRGB,
-            alpha=False,
-        )
+            rendered_pages.append(
+                (
+                    image,
+                    page.rect.width,
+                    page.rect.height,
+                )
+            )
 
-        image = np.frombuffer(
-            pixmap.samples,
-            dtype=np.uint8,
-        ).reshape(
-            pixmap.height,
-            pixmap.width,
-            3,
-        ).copy()
+    return rendered_pages
 
-    return image, page_width, page_height
+
+def _render_first_page(
+    pdf: bytes,
+) -> tuple[np.ndarray, float, float]:
+    """Render the first PDF page for single-page operations and tests."""
+    return _render_pages(pdf)[0]
 
 
 def _tile_slices(
@@ -79,38 +92,46 @@ def _tile_slices(
     ]
 
 
-def _build_image_pdf(
-    image: np.ndarray,
-    page_width: float,
-    page_height: float,
+def _build_image_pdf_pages(
+    pages: list[tuple[np.ndarray, float, float]],
 ) -> bytes:
-    """Rebuilds the modified RGB image as a one-page PDF."""
-
-    height, width = image.shape[:2]
-
-    pixmap = pymupdf.Pixmap(
-        pymupdf.csRGB,
-        width,
-        height,
-        image.tobytes(),
-        False,
-    )
-    png_bytes = pixmap.tobytes("png")
-
+    """Rebuild multiple RGB page images as one PDF."""
     with pymupdf.open() as document:
-        page = document.new_page(
-            width=page_width,
-            height=page_height,
-        )
-        page.insert_image(
-            page.rect,
-            stream=png_bytes,
-        )
+        for image, page_width, page_height in pages:
+            height, width = image.shape[:2]
+            pixmap = pymupdf.Pixmap(
+                pymupdf.csRGB,
+                width,
+                height,
+                image.tobytes(),
+                False,
+            )
+            png_bytes = pixmap.tobytes("png")
+
+            page = document.new_page(
+                width=page_width,
+                height=page_height,
+            )
+            page.insert_image(
+                page.rect,
+                stream=png_bytes,
+            )
 
         return document.tobytes(
             garbage=4,
             deflate=True,
         )
+
+
+def _build_image_pdf(
+    image: np.ndarray,
+    page_width: float,
+    page_height: float,
+) -> bytes:
+    """Rebuild one modified RGB image as a one-page PDF."""
+    return _build_image_pdf_pages(
+        [(image, page_width, page_height)]
+    )
 
 
 def _majority_vote_bytes(
@@ -147,30 +168,30 @@ def embed_bytes_in_pdf(
     position_key: bytes,
     dither_key: bytes,
 ) -> bytes:
-    image, page_width, page_height = _render_first_page(pdf)
-    for row_slice, column_slice in _tile_slices(image):
-        block = image[
-            row_slice,
-            column_slice,
-        ].copy()
+    rendered_pages = _render_pages(pdf)
+    watermarked_pages = []
+    for image, page_width, page_height in rendered_pages:
+        for row_slice, column_slice in _tile_slices(image):
+            block = image[
+                row_slice,
+                column_slice,
+            ].copy()
 
-        watermarked_block = embed_bytes(
-            block,
-            data,
-            position_key,
-            dither_key,
+            image[
+                row_slice,
+                column_slice,
+            ] = embed_bytes(
+                block,
+                data,
+                position_key,
+                dither_key,
+            )
+
+        watermarked_pages.append(
+            (image, page_width, page_height)
         )
 
-        image[
-            row_slice,
-            column_slice,
-        ] = watermarked_block
-
-    return _build_image_pdf(
-        image,
-        page_width,
-        page_height,
-    )
+    return _build_image_pdf_pages(watermarked_pages)
 
 
 def extract_bytes_from_pdf(
@@ -179,27 +200,32 @@ def extract_bytes_from_pdf(
     position_key: bytes,
     dither_key: bytes,
 ) -> bytes:
-    """Extract embedded data from the rasterized PDF page."""
+    """Extract data by voting across every tile on every page."""
+    page_candidates = []
 
-    image, _, _ = _render_first_page(pdf)
-    candidates = []
+    for image, _, _ in _render_pages(pdf):
+        tile_candidates = []
 
-    for row_slice, column_slice in _tile_slices(image):
-        block = image[
-            row_slice,
-            column_slice,
-        ]
+        for row_slice, column_slice in _tile_slices(image):
+            block = image[
+                row_slice,
+                column_slice,
+            ]
 
-        candidates.append(
-            extract_bytes(
-                block,
-                byte_count,
-                position_key,
-                dither_key,
+            tile_candidates.append(
+                extract_bytes(
+                    block,
+                    byte_count,
+                    position_key,
+                    dither_key,
+                )
             )
+
+        page_candidates.append(
+            _majority_vote_bytes(tile_candidates)
         )
 
-    return _majority_vote_bytes(candidates)
+    return _majority_vote_bytes(page_candidates)
 
 
 def is_pdf_compatible(pdf: bytes) -> bool:
