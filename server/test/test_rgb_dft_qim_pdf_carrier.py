@@ -46,6 +46,37 @@ def _create_test_pdf() -> bytes:
     return pdf
 
 
+def _build_jpeg_pdf(
+    image: np.ndarray,
+    page_width: float,
+    page_height: float,
+) -> bytes:
+    """Rebuild a page using lossy JPEG compression."""
+    height, width = image.shape[:2]
+    pixmap = pymupdf.Pixmap(
+        pymupdf.csRGB,
+        width,
+        height,
+        image.tobytes(),
+        False,
+    )
+    jpeg = pixmap.tobytes(
+        "jpeg",
+        jpg_quality=60,
+    )
+
+    with pymupdf.open() as document:
+        page = document.new_page(
+            width=page_width,
+            height=page_height,
+        )
+        page.insert_image(page.rect, stream=jpeg)
+        return document.tobytes(
+            garbage=4,
+            deflate=True,
+        )
+
+
 def test_secret_roundtrip_through_pdf():
     source_pdf = _create_test_pdf()
     keys = derive_keys(MASTER_KEY)
@@ -151,6 +182,88 @@ def test_extraction_survives_one_destroyed_tile():
 
     extracted_message = extract_bytes_from_pdf(
         damaged_pdf,
+        len(message),
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    assert decode_message(
+        extracted_message,
+        MASTER_KEY,
+    ) == SECRET
+
+
+def test_extraction_survives_page_wide_pixel_noise():
+    source_pdf = _create_test_pdf()
+    keys = derive_keys(MASTER_KEY)
+    message = encode_message(SECRET, MASTER_KEY)
+
+    watermarked_pdf = embed_bytes_in_pdf(
+        source_pdf,
+        message,
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    image, page_width, page_height = _render_first_page(
+        watermarked_pdf
+    )
+
+    random = np.random.default_rng(12345)
+    noise = random.integers(
+        -8,
+        9,
+        size=image.shape,
+        dtype=np.int16,
+    )
+    noisy_image = np.clip(
+        image.astype(np.int16) + noise,
+        0,
+        255,
+    ).astype(np.uint8)
+
+    damaged_pdf = _build_image_pdf(
+        noisy_image,
+        page_width,
+        page_height,
+    )
+
+    extracted_message = extract_bytes_from_pdf(
+        damaged_pdf,
+        len(message),
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    assert decode_message(
+        extracted_message,
+        MASTER_KEY,
+    ) == SECRET
+
+
+def test_extraction_survives_jpeg_recompression():
+    source_pdf = _create_test_pdf()
+    keys = derive_keys(MASTER_KEY)
+    message = encode_message(SECRET, MASTER_KEY)
+
+    watermarked_pdf = embed_bytes_in_pdf(
+        source_pdf,
+        message,
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    image, page_width, page_height = _render_first_page(
+        watermarked_pdf
+    )
+    compressed_pdf = _build_jpeg_pdf(
+        image,
+        page_width,
+        page_height,
+    )
+
+    extracted_message = extract_bytes_from_pdf(
+        compressed_pdf,
         len(message),
         keys.qim_positions,
         keys.qim_dither,
