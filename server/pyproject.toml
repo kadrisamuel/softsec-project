@@ -12,6 +12,7 @@ dependencies = [
 	"dill==0.4.1",
 	"cryptography==50.0.1",
 	"reedsolo==1.7.0",
+	"numpy==2.5.3",
 ]
 
 [project.optional-dependencies]
