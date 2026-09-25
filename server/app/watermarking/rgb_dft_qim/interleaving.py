@@ -24,7 +24,7 @@ def deinterleave_bytes(data: bytes, key: bytes) -> bytes:
 
 
 def _permutation(length: int, key: bytes) -> list[int]:
-    """Assign each byte position a deterministic, key-dependent sorting value"""
+    """Assign each byte position a deterministic, key-dependent sorting value."""
     def sort_value(index: int) -> bytes:
         position = index.to_bytes(4, byteorder="big")
         return hmac.digest(key, b"interleave:" + position, "sha256")
