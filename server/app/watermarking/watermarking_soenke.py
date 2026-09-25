@@ -219,7 +219,7 @@ class WatermarkingSoenke(WatermarkingMethod):
     def is_watermark_applicable(
         self,
         pdf: PdfSource,
-        _: str | None = None,
+        position: str | None = None,
     ) -> bool:
         """Check if watermark can be applied to PDF"""
 
@@ -295,11 +295,18 @@ class WatermarkingSoenke(WatermarkingMethod):
                     byte |= bit << bit_index
                 byte_array.append(byte)
 
-            page_secrets.append(_extract_secret(derived_key, nonce, bytes(byte_array)))
+            try:
+                page_secrets.append(
+                    _extract_secret(derived_key, nonce, bytes(byte_array))
+                )
+            except SecretNotFoundError():
+                if document.page_count != 1:
+                    continue
+                raise
 
         # Check if secrets are the same across pages
         page_secrets.sort()
-        if page_secrets[0] == page_secrets[-1]:
+        if page_secrets[0] == page_secrets[-1] and len(page_secrets[0]):
             return page_secrets[0]
 
         raise SecretNotFoundError()
