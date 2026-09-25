@@ -7,6 +7,8 @@ from .interleaving import deinterleave_bytes, interleave_bytes
 _PARITY_BYTES = 20
 _RS_CODEC = RSCodec(_PARITY_BYTES)
 
+ENCODED_MESSAGE_BYTES = 53
+
 
 def encode_message(secret: str, master_key: str) -> bytes:
     keys = derive_keys(master_key)
@@ -32,4 +34,4 @@ def decode_message(message: bytes, master_key: str) -> str:
     return decode_payload(decoded_payload, keys.authentication)
 
 
-__all__ = ["decode_message", "encode_message"]
+__all__ = ["decode_message", "encode_message", "ENCODED_MESSAGE_BYTES"]

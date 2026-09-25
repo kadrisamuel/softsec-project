@@ -3,6 +3,18 @@ from __future__ import annotations
 import re
 from typing import Final
 
+from .key_schedule import derive_keys
+from .message_codec import (
+    ENCODED_MESSAGE_BYTES,
+    decode_message,
+    encode_message,
+)
+from .pdf_carrier import (
+    embed_bytes_in_pdf,
+    extract_bytes_from_pdf,
+    is_pdf_compatible,
+)
+
 from ..method import (
     PdfSource,
     SecretNotFoundError,
@@ -52,10 +64,8 @@ class RGBDFTQIMWatermark(WatermarkingMethod):
         pdf: PdfSource,
         position: str | None = None,
     ) -> bool:
-        load_pdf_bytes(pdf)
-
-        # Remain unavailable until embedding is implemented.
-        return False
+        data = load_pdf_bytes(pdf)
+        return is_pdf_compatible(data)
 
     def add_watermark(
         self,
@@ -64,21 +74,48 @@ class RGBDFTQIMWatermark(WatermarkingMethod):
         key: str,
         position: str | None = None,
     ) -> bytes:
-        load_pdf_bytes(pdf)
+        data = load_pdf_bytes(pdf)
         self._validate_secret(secret)
         self._validate_key(key)
 
-        raise WatermarkingError(
-            "RGB DFT-QIM embedding is not implemented yet"
-        )
+        if not is_pdf_compatible(data):
+            raise WatermarkingError(
+                "PDF page is too small for RGB DFT-QIM"
+            )
+
+        keys = derive_keys(key)
+        message = encode_message(secret, key)
+
+        return embed_bytes_in_pdf(
+            data,
+            message,
+            keys.qim_positions,
+            keys.qim_dither,
+    )
 
     def read_secret(self, pdf: PdfSource, key: str) -> str:
-        load_pdf_bytes(pdf)
+        data = load_pdf_bytes(pdf)
         self._validate_key(key)
 
-        raise SecretNotFoundError(
-            "RGB DFT-QIM extraction is not implemented yet"
-        )
+        if not is_pdf_compatible(data):
+            raise SecretNotFoundError(
+                "PDF is not compatible with RGB DFT-QIM"
+            )
+
+        keys = derive_keys(key)
+
+        try:
+            message = extract_bytes_from_pdf(
+                data,
+                ENCODED_MESSAGE_BYTES,
+                keys.qim_positions,
+                keys.qim_dither,
+            )
+            return decode_message(message, key)
+        except ValueError as exc:
+            raise SecretNotFoundError(
+                "RGB DFT-QIM watermark was not found"
+            ) from exc
 
 
 __all__ = ["RGBDFTQIMWatermark"]

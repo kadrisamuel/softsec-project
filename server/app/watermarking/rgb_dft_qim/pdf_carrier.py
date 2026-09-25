@@ -149,4 +149,14 @@ def extract_bytes_from_pdf(
     )
 
 
-__all__ = ["embed_bytes_in_pdf", "extract_bytes_from_pdf"]
+def is_pdf_compatible(pdf: bytes) -> bool:
+    try:
+        image, _, _ = _render_first_page(pdf)
+        _center_slices(image)
+    except (ValueError, pymupdf.FileDataError):
+        return False
+
+    return True
+
+
+__all__ = ["embed_bytes_in_pdf", "extract_bytes_from_pdf", "is_pdf_compatible"]
