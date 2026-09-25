@@ -10,6 +10,11 @@ dependencies = [
 	"PyMySQL==1.2.3",
 	"SQLAlchemy==2.0.54",
 	"rmap @ git+https://github.com/nharrand/RMAP.git@v1.0.2",
+	"scipy==1.18.0",
+	"numpy==2.5.3",
+	"pillow==12.3.0",
+	"cryptography==50.0.1",
+	"reedsolo==1.7.0"
 ]
 
 [project.optional-dependencies]
