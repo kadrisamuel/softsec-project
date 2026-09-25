@@ -5,6 +5,7 @@ import numpy as np
 import pymupdf
 
 from .dft_qim import embed_bytes, extract_bytes
+from .visible import add_visible_pattern
 
 
 _RENDER_DPI = 300
@@ -219,12 +220,27 @@ def embed_bytes_in_pdf(
     data: bytes,
     position_key: bytes,
     dither_key: bytes,
+    visible_text: str | None = None,
+    visible_key: bytes | None = None,
 ) -> bytes:
+    if (visible_text is None) != (visible_key is None):
+        raise ValueError(
+            "Visible text and key must be provided together"
+        )
+
     rendered_pages = _render_pages(pdf)
     watermarked_pages = []
     for rendered_image, page_width, page_height in rendered_pages:
         image = _normalize_image(rendered_image)
 
+        if visible_text is not None and visible_key is not None:
+            image = add_visible_pattern(
+                image,
+                visible_text,
+                visible_key,
+            )
+
+        # QIM loop
         for row_slice, column_slice in _usable_tile_slices(image):
             block = image[
                 row_slice,

@@ -14,6 +14,7 @@ from .pdf_carrier import (
     extract_bytes_from_pdf,
     is_pdf_compatible,
 )
+from .visible import visible_identifier
 
 from ..method import (
     PdfSource,
@@ -86,12 +87,19 @@ class RGBDFTQIMWatermark(WatermarkingMethod):
         keys = derive_keys(key)
         message = encode_message(secret, key)
 
+        visible_text = visible_identifier(
+            secret,
+            keys.visible_placement,
+        )
+
         return embed_bytes_in_pdf(
             data,
             message,
             keys.qim_positions,
             keys.qim_dither,
-    )
+            visible_text=visible_text,
+            visible_key=keys.visible_placement,
+        )
 
     def read_secret(self, pdf: PdfSource, key: str) -> str:
         data = load_pdf_bytes(pdf)
