@@ -1,3 +1,10 @@
+"""
+Purpose - Keyed Scrambling:
+* Hide which image locations contain the secret, HMAC, or parity bytes.
+* Make targeted removal harder without the key.
+* Break up the predictable structure of the encoded message.
+"""
+
 import hmac
 
 
