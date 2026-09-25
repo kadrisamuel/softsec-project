@@ -13,6 +13,7 @@ _BLOCK_SIZE = 512
 def _render_first_page(
     pdf: bytes,
 ) -> tuple[np.ndarray, float, float]:
+    """Render the first PDF page as RGB pixels while preserving its page size."""
     with pymupdf.open(
         stream=pdf,
         filetype="pdf",
@@ -61,12 +62,49 @@ def _center_slices(
     )
 
 
+def _tile_slices(
+    image: np.ndarray,
+) -> list[tuple[slice, slice]]:
+    """Divide the image into a centred grid of complete 512×512 tiles."""
+    
+    height, width = image.shape[:2]
+
+    row_count = height // _BLOCK_SIZE
+    column_count = width // _BLOCK_SIZE
+
+    if row_count == 0 or column_count == 0:
+        raise ValueError(
+            "Rendered page must be at least 512 by 512 pixels"
+        )
+
+    grid_height = row_count * _BLOCK_SIZE
+    grid_width = column_count * _BLOCK_SIZE
+    top = (height - grid_height) // 2
+    left = (width - grid_width) // 2
+
+    return [
+        (
+            slice(
+                top + row * _BLOCK_SIZE,
+                top + (row + 1) * _BLOCK_SIZE,
+            ),
+            slice(
+                left + column * _BLOCK_SIZE,
+                left + (column + 1) * _BLOCK_SIZE,
+            ),
+        )
+        for row in range(row_count)
+        for column in range(column_count)
+    ]
+
+
 def _build_image_pdf(
     image: np.ndarray,
     page_width: float,
     page_height: float,
 ) -> bytes:
     """Rebuilds the modified RGB image as a one-page PDF."""
+
     height, width = image.shape[:2]
 
     pixmap = pymupdf.Pixmap(
@@ -101,7 +139,7 @@ def embed_bytes_in_pdf(
     dither_key: bytes,
 ) -> bytes:
     image, page_width, page_height = _render_first_page(pdf)
-    row_slice, column_slice = _center_slices(image)
+    row_slice, column_slice = _tile_slices(image)[0]
 
     block = image[
         row_slice,
@@ -133,8 +171,10 @@ def extract_bytes_from_pdf(
     position_key: bytes,
     dither_key: bytes,
 ) -> bytes:
+    """Extract embedded data from the rasterized PDF page."""
+
     image, _, _ = _render_first_page(pdf)
-    row_slice, column_slice = _center_slices(image)
+    row_slice, column_slice = _tile_slices(image)[0]
 
     block = image[
         row_slice,
@@ -152,7 +192,7 @@ def extract_bytes_from_pdf(
 def is_pdf_compatible(pdf: bytes) -> bool:
     try:
         image, _, _ = _render_first_page(pdf)
-        _center_slices(image)
+        _tile_slices(image)
     except (ValueError, pymupdf.FileDataError):
         return False
 
