@@ -3,6 +3,7 @@ import pymupdf
 
 # pyrefly: ignore [missing-import]
 from app.watermarking.rgb_dft_qim.method import RGBDFTQIMWatermark
+from app.watermarking.utils import METHODS
 
 
 VALID_SECRET = "0123456789abcdef0123456789abcdef"
@@ -85,3 +86,9 @@ def test_method_roundtrip(method, sample_pdf):
         watermarked_pdf,
         key=key,
     ) == VALID_SECRET
+
+
+def test_method_is_registered():
+    registered_method = METHODS[RGBDFTQIMWatermark.name]
+
+    assert isinstance(registered_method, RGBDFTQIMWatermark)
