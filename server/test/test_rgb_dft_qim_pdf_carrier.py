@@ -10,7 +10,11 @@ from app.watermarking.rgb_dft_qim.pdf_carrier import (
     _tile_slices,
     embed_bytes_in_pdf,
     extract_bytes_from_pdf,
+    _render_first_page,
+    _majority_vote_bytes,
+    _build_image_pdf,
 )
+from app.watermarking.rgb_dft_qim.dft_qim import extract_bytes
 
 
 SECRET = "00112233445566778899aabbccddeeff"
@@ -79,3 +83,80 @@ def test_tile_slices_fill_available_page_area():
     for row_slice, column_slice in tiles:
         assert row_slice.stop - row_slice.start == 512
         assert column_slice.stop - column_slice.start == 512
+
+
+def test_message_is_embedded_in_every_tile():
+    source_pdf = _create_test_pdf()
+    keys = derive_keys(MASTER_KEY)
+    message = encode_message(SECRET, MASTER_KEY)
+
+    watermarked_pdf = embed_bytes_in_pdf(
+        source_pdf,
+        message,
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    image, _, _ = _render_first_page(watermarked_pdf)
+    tiles = _tile_slices(image)
+
+    assert len(tiles) > 1
+
+    for row_slice, column_slice in tiles:
+        block = image[row_slice, column_slice]
+
+        assert extract_bytes(
+            block,
+            len(message),
+            keys.qim_positions,
+            keys.qim_dither,
+        ) == message
+
+
+def test_majority_vote_recovers_damaged_bytes():
+    candidates = [
+        bytes([0b10101010, 0b11110000]),
+        bytes([0b10101010, 0b11110000]),
+        bytes([0b00101010, 0b11110001]),
+    ]
+
+    result = _majority_vote_bytes(candidates)
+
+    assert result == bytes([0b10101010, 0b11110000])
+
+
+def test_extraction_survives_one_destroyed_tile():
+    source_pdf = _create_test_pdf()
+    keys = derive_keys(MASTER_KEY)
+    message = encode_message(SECRET, MASTER_KEY)
+
+    watermarked_pdf = embed_bytes_in_pdf(
+        source_pdf,
+        message,
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    image, page_width, page_height = _render_first_page(
+        watermarked_pdf
+    )
+    row_slice, column_slice = _tile_slices(image)[0]
+    image[row_slice, column_slice] = 0
+
+    damaged_pdf = _build_image_pdf(
+        image,
+        page_width,
+        page_height,
+    )
+
+    extracted_message = extract_bytes_from_pdf(
+        damaged_pdf,
+        len(message),
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    assert decode_message(
+        extracted_message,
+        MASTER_KEY,
+    ) == SECRET

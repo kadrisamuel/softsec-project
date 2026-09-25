@@ -43,30 +43,11 @@ def _render_first_page(
     return image, page_width, page_height
 
 
-def _center_slices(
-    image: np.ndarray,
-) -> tuple[slice, slice]:
-    height, width = image.shape[:2]
-
-    if height < _BLOCK_SIZE or width < _BLOCK_SIZE:
-        raise ValueError(
-            "Rendered page must be at least 512 by 512 pixels"
-        )
-
-    top = (height - _BLOCK_SIZE) // 2
-    left = (width - _BLOCK_SIZE) // 2
-
-    return (
-        slice(top, top + _BLOCK_SIZE),
-        slice(left, left + _BLOCK_SIZE),
-    )
-
-
 def _tile_slices(
     image: np.ndarray,
 ) -> list[tuple[slice, slice]]:
     """Divide the image into a centred grid of complete 512×512 tiles."""
-    
+
     height, width = image.shape[:2]
 
     row_count = height // _BLOCK_SIZE
@@ -132,6 +113,34 @@ def _build_image_pdf(
         )
 
 
+def _majority_vote_bytes(
+    candidates: list[bytes],
+) -> bytes:
+    """Recover bytes by selecting the most common value of each bit."""
+    if not candidates:
+        raise ValueError("At least one candidate is required")
+
+    byte_count = len(candidates[0])
+
+    if any(len(candidate) != byte_count for candidate in candidates):
+        raise ValueError("Candidates must have equal lengths")
+
+    candidate_bits = [
+        np.unpackbits(
+            np.frombuffer(candidate, dtype=np.uint8)
+        )
+        for candidate in candidates
+    ]
+
+    votes = np.sum(candidate_bits, axis=0)
+    majority_bits = votes > len(candidates) / 2
+
+    ties = votes * 2 == len(candidates)
+    majority_bits[ties] = candidate_bits[0][ties]
+
+    return np.packbits(majority_bits).tobytes()
+
+
 def embed_bytes_in_pdf(
     pdf: bytes,
     data: bytes,
@@ -139,24 +148,23 @@ def embed_bytes_in_pdf(
     dither_key: bytes,
 ) -> bytes:
     image, page_width, page_height = _render_first_page(pdf)
-    row_slice, column_slice = _tile_slices(image)[0]
+    for row_slice, column_slice in _tile_slices(image):
+        block = image[
+            row_slice,
+            column_slice,
+        ].copy()
 
-    block = image[
-        row_slice,
-        column_slice,
-    ].copy()
+        watermarked_block = embed_bytes(
+            block,
+            data,
+            position_key,
+            dither_key,
+        )
 
-    watermarked_block = embed_bytes(
-        block,
-        data,
-        position_key,
-        dither_key,
-    )
-
-    image[
-        row_slice,
-        column_slice,
-    ] = watermarked_block
+        image[
+            row_slice,
+            column_slice,
+        ] = watermarked_block
 
     return _build_image_pdf(
         image,
@@ -174,19 +182,24 @@ def extract_bytes_from_pdf(
     """Extract embedded data from the rasterized PDF page."""
 
     image, _, _ = _render_first_page(pdf)
-    row_slice, column_slice = _tile_slices(image)[0]
+    candidates = []
 
-    block = image[
-        row_slice,
-        column_slice,
-    ]
+    for row_slice, column_slice in _tile_slices(image):
+        block = image[
+            row_slice,
+            column_slice,
+        ]
 
-    return extract_bytes(
-        block,
-        byte_count,
-        position_key,
-        dither_key,
-    )
+        candidates.append(
+            extract_bytes(
+                block,
+                byte_count,
+                position_key,
+                dither_key,
+            )
+        )
+
+    return _majority_vote_bytes(candidates)
 
 
 def is_pdf_compatible(pdf: bytes) -> bool:
