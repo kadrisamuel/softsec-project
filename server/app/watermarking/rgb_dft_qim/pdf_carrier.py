@@ -1,4 +1,5 @@
 from __future__ import annotations
+from PIL import Image
 
 import numpy as np
 import pymupdf
@@ -8,6 +9,8 @@ from .dft_qim import embed_bytes, extract_bytes
 
 _RENDER_DPI = 300
 _BLOCK_SIZE = 512
+_NORMALIZED_SHORT_SIDE = 2048
+_MIN_TILE_STANDARD_DEVIATION = 8.0
 
 
 def _render_pages(
@@ -56,6 +59,32 @@ def _render_first_page(
     return _render_pages(pdf)[0]
 
 
+def _normalize_image(
+    image: np.ndarray,
+) -> np.ndarray:
+    """Resize an image to a fixed short side while preserving its aspect ratio."""
+    height, width = image.shape[:2]
+    scale = _NORMALIZED_SHORT_SIDE / min(
+        height,
+        width,
+    )
+
+    target_height = round(height * scale)
+    target_width = round(width * scale)
+
+    # Pillow uses (width, height), while NumPy uses
+    # (height, width, channels).
+    resized = Image.fromarray(image).resize(
+        (target_width, target_height),
+        resample=Image.Resampling.LANCZOS,
+    )
+
+    return np.asarray(
+        resized,
+        dtype=np.uint8,
+    ).copy()
+
+
 def _tile_slices(
     image: np.ndarray,
 ) -> list[tuple[slice, slice]]:
@@ -90,6 +119,29 @@ def _tile_slices(
         for row in range(row_count)
         for column in range(column_count)
     ]
+
+
+def _usable_tile_slices(
+    image: np.ndarray,
+) -> list[tuple[slice, slice]]:
+    """Return tiles containing enough visual variation for reliable QIM."""
+    usable_tiles = []
+
+    for row_slice, column_slice in _tile_slices(image):
+        block = image[
+            row_slice,
+            column_slice,
+        ]
+
+        if (
+            float(np.std(block))
+            >= _MIN_TILE_STANDARD_DEVIATION
+        ):
+            usable_tiles.append(
+                (row_slice, column_slice)
+            )
+
+    return usable_tiles
 
 
 def _build_image_pdf_pages(
@@ -170,8 +222,10 @@ def embed_bytes_in_pdf(
 ) -> bytes:
     rendered_pages = _render_pages(pdf)
     watermarked_pages = []
-    for image, page_width, page_height in rendered_pages:
-        for row_slice, column_slice in _tile_slices(image):
+    for rendered_image, page_width, page_height in rendered_pages:
+        image = _normalize_image(rendered_image)
+
+        for row_slice, column_slice in _usable_tile_slices(image):
             block = image[
                 row_slice,
                 column_slice,
@@ -203,10 +257,11 @@ def extract_bytes_from_pdf(
     """Extract data by voting across every tile on every page."""
     page_candidates = []
 
-    for image, _, _ in _render_pages(pdf):
+    for rendered_image, _, _ in _render_pages(pdf):
+        image = _normalize_image(rendered_image)
         tile_candidates = []
 
-        for row_slice, column_slice in _tile_slices(image):
+        for row_slice, column_slice in _usable_tile_slices(image):
             block = image[
                 row_slice,
                 column_slice,
@@ -221,8 +276,9 @@ def extract_bytes_from_pdf(
                 )
             )
 
-        page_candidates.append(
-            _majority_vote_bytes(tile_candidates)
+        if tile_candidates:
+             page_candidates.append(
+                _majority_vote_bytes(tile_candidates)
         )
 
     return _majority_vote_bytes(page_candidates)

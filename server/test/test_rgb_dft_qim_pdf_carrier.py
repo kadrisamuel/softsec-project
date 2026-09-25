@@ -15,6 +15,8 @@ from app.watermarking.rgb_dft_qim.pdf_carrier import (
     _build_image_pdf,
     _render_pages,
     _build_image_pdf_pages,
+    _normalize_image,
+    _usable_tile_slices,
 )
 from app.watermarking.rgb_dft_qim.dft_qim import extract_bytes
 
@@ -118,7 +120,7 @@ def test_tile_slices_fill_available_page_area():
         assert column_slice.stop - column_slice.start == 512
 
 
-def test_message_is_embedded_in_every_tile():
+def test_message_is_recovered_from_usable_tiles():
     source_pdf = _create_test_pdf()
     keys = derive_keys(MASTER_KEY)
     message = encode_message(SECRET, MASTER_KEY)
@@ -131,19 +133,29 @@ def test_message_is_embedded_in_every_tile():
     )
 
     image, _, _ = _render_first_page(watermarked_pdf)
-    tiles = _tile_slices(image)
+    image = _normalize_image(image)
+    usable_tiles = _usable_tile_slices(image)
 
-    assert len(tiles) > 1
+    assert len(usable_tiles) > 1
 
-    for row_slice, column_slice in tiles:
-        block = image[row_slice, column_slice]
-
-        assert extract_bytes(
-            block,
+    candidates = [
+        extract_bytes(
+            image[row_slice, column_slice],
             len(message),
             keys.qim_positions,
             keys.qim_dither,
-        ) == message
+        )
+        for row_slice, column_slice in usable_tiles
+    ]
+
+    recovered_message = _majority_vote_bytes(
+        candidates
+    )
+
+    assert decode_message(
+        recovered_message,
+        MASTER_KEY,
+    ) == SECRET
 
 
 def test_majority_vote_recovers_damaged_bytes():
@@ -345,3 +357,80 @@ def test_extraction_survives_destroyed_first_page():
         extracted_message,
         MASTER_KEY,
     ) == SECRET
+
+
+def test_extraction_survives_page_scaling():
+    source_pdf = _create_test_pdf()
+    keys = derive_keys(MASTER_KEY)
+    message = encode_message(SECRET, MASTER_KEY)
+
+    watermarked_pdf = embed_bytes_in_pdf(
+        source_pdf,
+        message,
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    image, page_width, page_height = _render_first_page(
+        watermarked_pdf
+    )
+    scaled_pdf = _build_image_pdf(
+        image,
+        page_width * 0.9,
+        page_height * 0.9,
+    )
+
+    extracted_message = extract_bytes_from_pdf(
+        scaled_pdf,
+        len(message),
+        keys.qim_positions,
+        keys.qim_dither,
+    )
+
+    assert decode_message(
+        extracted_message,
+        MASTER_KEY,
+    ) == SECRET
+
+
+def test_normalization_is_independent_of_uniform_scaling():
+    original = np.zeros(
+        (1000, 1500, 3),
+        dtype=np.uint8,
+    )
+    scaled = np.zeros(
+        (900, 1350, 3),
+        dtype=np.uint8,
+    )
+
+    normalized_original = _normalize_image(original)
+    normalized_scaled = _normalize_image(scaled)
+
+    assert normalized_original.shape == (
+        2048,
+        3072,
+        3,
+    )
+    assert normalized_scaled.shape == (
+        2048,
+        3072,
+        3,
+    )
+
+
+def test_usable_tile_slices_excludes_blank_tiles():
+    image = np.full(
+        (1024, 1024, 3),
+        255,
+        dtype=np.uint8,
+    )
+
+    image[:256, :512] = 0
+
+    usable_tiles = _usable_tile_slices(image)
+
+    assert len(usable_tiles) == 1
+
+    row_slice, column_slice = usable_tiles[0]
+    assert row_slice == slice(0, 512)
+    assert column_slice == slice(0, 512)
