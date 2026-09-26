@@ -38,6 +38,7 @@ from .method import (
     WatermarkingMethod,
     load_pdf_bytes,
 )
+from .rgb_dft_qim.method import RGBDFTQIMWatermark
 from .unsafe_bash_bridge_append_eof import UnsafeBashBridgeAppendEOF
 from .watermarking_soenke import WatermarkingSoenke
 
@@ -47,9 +48,11 @@ from .watermarking_soenke import WatermarkingSoenke
 
 METHODS: dict[str, WatermarkingMethod] = {
     AddAfterEOF.name: AddAfterEOF(),
+    RGBDFTQIMWatermark.name: RGBDFTQIMWatermark(),
     WatermarkingSoenke.name: WatermarkingSoenke(),
-    UnsafeBashBridgeAppendEOF.name: UnsafeBashBridgeAppendEOF()
+    UnsafeBashBridgeAppendEOF.name: UnsafeBashBridgeAppendEOF(),
 }
+
 """Registry of available watermarking methods.
 
 Keys are human-readable method names (stable, lowercase, hyphenated)

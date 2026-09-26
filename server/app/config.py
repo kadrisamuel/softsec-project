@@ -43,7 +43,7 @@ class Config:  # pylint: disable=too-few-public-methods
         "RMAP_SERVER_PRIVATE_KEY_PASS_FILE", "/run/secrets/private_key_pass"
     )
     RMAP_CLIENT_KEYS_DIR = os.environ.get("RMAP_CLIENT_KEYS_DIR", "pub-keys")
-    RMAP_WATERMARK_METHOD = os.environ.get("RMAP_WATERMARK_METHOD", "toy-eof")
+    RMAP_WATERMARK_METHOD = os.environ.get("RMAP_WATERMARK_METHOD", "rgb-dft-qim-v1")
     RMAP_LINK_PREFIX = os.environ.get(
         "RMAP_LINK_PREFIX",
         "http://softsec-group-02.dsv.local.su.se:5000/api/get-version/",
