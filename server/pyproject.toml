@@ -14,7 +14,7 @@ dependencies = [
 	"numpy==2.5.3",
 	"pillow==12.3.0",
 	"cryptography==50.0.1",
-	"reedsolo==1.7.0"
+	"reedsolo==1.7.0",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +39,11 @@ disable = [
 addopts = "-q"
 testpaths = ["test/"]
 python_files = ["test_*.py"]
+filterwarnings = [
+    "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+]
 
 [project.scripts]
 pdfwm = "app.watermarking.cli:main"
