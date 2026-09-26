@@ -6,6 +6,7 @@ from random import Random
 
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 from flask import current_app, jsonify, request
+from rmap import RMAPError
 from sqlalchemy import text
 
 from ..db import get_engine
@@ -13,6 +14,16 @@ from ..watermarking.method import WatermarkingError
 from ..watermarking.utils import apply_watermark
 from . import bp
 from .source_document import get_source_document_path
+
+
+@bp.errorhandler(RMAPError)
+def handle_rmap_error(error: RMAPError):
+    """Return a controlled response for invalid RMAP messages."""
+
+    current_app.logger.warning("Rejected RMAP request: %s", error)
+    return jsonify(
+        {"error": "invalid RMAP request"}
+    ), HTTPStatus.BAD_REQUEST
 
 
 def _read_watermarking_key(app) -> str:
@@ -130,7 +141,7 @@ def rmap_get_link():
     watermark_key: str = _derive_key(
         _read_watermarking_key(current_app), document_id, identity, expected_link
     )
-    secret: str = os.urandom(32).hex()
+    secret: str = os.urandom(16).hex()
     method: str = current_app.config["RMAP_WATERMARK_METHOD"]
 
     # Resolve registered group pdf path

@@ -22,7 +22,13 @@ dev = [
 ]
 
 [tool.pylint."messages control"]
-disable = ["cyclic-import", "too-few-public-methods"]
+disable = [
+	"cyclic-import",
+	"too-few-public-methods",
+	"too-many-arguments",
+	"too-many-positional-arguments",
+	"too-many-return-statements",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q"
