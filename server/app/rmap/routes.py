@@ -1,9 +1,10 @@
 """Implementation of the RMAP endpoints"""
 
 import os
-from hashlib import sha3_256
 from http import HTTPStatus
+from random import Random
 
+from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 from flask import current_app, jsonify, request
 from sqlalchemy import text
 
@@ -12,14 +13,76 @@ from ..watermarking.method import WatermarkingError
 from ..watermarking.utils import apply_watermark
 from . import bp
 
-# Read private key pass from secret file
-with open(
-    os.environ.get("RMAP_SERVER_PRIVATE_KEY_PASS_FILE"), encoding="utf8"
-) as pass_file:
-    private_key_pass = pass_file.read().strip()
+DOCUMENT_ID = "0"  # TODO: Insert correct document id
 
-# Use SHA3-256 private key password hex hash as key for watermarking
-watermark_key = sha3_256(private_key_pass.encode()).hexdigest()
+
+def _read_watermarking_key(app) -> str:
+    """Read watermarking master key from secret"""
+
+    with open(app.config["RMAP_WATERMARKING_KEY_PATH"], encoding="utf8") as key_file:
+        return key_file.read().strip()
+
+
+def _derive_key(
+    master_key: str, document_id: str, issuer: str, expected_link: str
+) -> str:
+    """Derives a key for a RMAP requested file encoded as a hex string"""
+
+    argon2id = Argon2id(
+        salt=Random(expected_link.encode()).randbytes(16),
+        length=32,
+        iterations=1,
+        lanes=4,
+        memory_cost=65536,
+    )
+    return argon2id.derive(
+        master_key.encode()
+        + document_id.encode()
+        + issuer.encode()
+        + expected_link.encode()
+    ).hex()
+
+
+def _check_link_collision(expected_link: str) -> bool:
+    """Check version table for existing versions"""
+
+    with get_engine().connect() as connection:
+        row = connection.execute(
+            text(
+                """
+                SELECT *
+                FROM Versions
+                WHERE link = :link
+                LIMIT 1
+                """
+            ),
+            {"link": expected_link},
+        ).first()
+
+    return row is not None
+
+
+def _register_version(
+    document_id: str, expected_link: str, secret: str, method: str, path: str
+) -> None:
+    """Register new watermarked version in version table"""
+
+    with get_engine().begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO Versions (documentid, link, secret, method, path)
+                VALUES (:documentid, :link, :secret, :method, :path)
+                """
+            ),
+            {
+                "documentid": document_id,
+                "link": expected_link,
+                "secret": secret,
+                "method": method,
+                "path": path,
+            },
+        )
 
 
 @bp.post("/rmap-initiate")
@@ -40,18 +103,14 @@ def rmap_get_link():
 
     # Check for link collision
     try:
-        with get_engine().connect() as connection:
-            row = connection.execute(
-                text(
-                    """
-                    SELECT *
-                    FROM Versions
-                    WHERE link = :link
-                    LIMIT 1
-                    """
-                ),
-                {"link": expected_link},
-            ).first()
+        if _check_link_collision(expected_link):
+            current_app.logger.exception(
+                "link already exists=%s",
+                expected_link,
+            )
+            return jsonify(
+                {"error": "version cannot be created"}
+            ), HTTPStatus.INTERNAL_SERVER_ERROR
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while retrieving version link=%s",
@@ -59,22 +118,22 @@ def rmap_get_link():
         )
         return jsonify({"error": "database error"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
-    if row:
-        current_app.logger.exception(
-            "link already exists=%s",
-            expected_link,
-        )
-        return jsonify(
-            {"error": "version cannot be created"}
-        ), HTTPStatus.INTERNAL_SERVER_ERROR
+    # Prepare watermarking params
+    watermark_key: str = _derive_key(
+        _read_watermarking_key(current_app), DOCUMENT_ID, identity, expected_link
+    )
+    secret: str = os.urandom(32).hex()
+    method: str = current_app.config["RMAP_WATERMARK_METHOD"]
 
-    # Try watermark group pdf
-    with open("/run/secrets/group_pdf", "rb") as pdf:
+    # Watermark group pdf
+    with open(
+        "/run/secrets/group_pdf", "rb"
+    ) as pdf:  # TODO: Get group pdf path from document table?
         try:
             watermarked_pdf_data = apply_watermark(
-                current_app.config["RMAP_WATERMARK_METHOD"],
-                pdf,
-                secret=identity,
+                method=method,
+                pdf=pdf,
+                secret=secret,
                 key=watermark_key,
             )
         except (WatermarkingError, ValueError):
@@ -83,28 +142,13 @@ def rmap_get_link():
             ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     # Write watermarked pdf to storage
-    out_path = f"{current_app.config['STORAGE_DIR'].resolve()}/{identity}.pdf"
+    out_path = f"{current_app.config['STORAGE_DIR'].resolve()}/{expected_link}.pdf"
     with open(out_path, "wb") as out_pdf:
         out_pdf.write(watermarked_pdf_data)
 
     # Register new version
     try:
-        with get_engine().begin() as connection:
-            row = connection.execute(
-                text(
-                    """
-                    INSERT INTO Versions (documentid, link, secret, method, path)
-                    VALUES (:documentid, :link, :secret, :method, :path)
-                    """
-                ),
-                {
-                    "documentid": document_id,  # TODO: Insert correct document id
-                    "link": expected_link,
-                    "secret": identity,
-                    "method": current_app.config["RMAP_WATERMARK_METHOD"],
-                    "path": out_path,
-                },
-            )
+        _register_version(DOCUMENT_ID, expected_link, secret, method, out_path)
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while creating version with link=%s",
