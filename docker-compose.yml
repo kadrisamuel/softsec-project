@@ -12,6 +12,7 @@ services:
     secrets:
       - private_key
       - private_key_pass
+      - watermarking_key
       - group_pdf
     volumes:
       - user-files:/app/storage
@@ -36,6 +37,7 @@ services:
       - RMAP_CLIENT_KEYS_DIR=${RMAP_CLIENT_KEYS_DIR}
       - RMAP_WATERMARK_METHOD=${RMAP_WATERMARK_METHOD}
       - RMAP_LINK_PREFIX=${RMAP_LINK_PREFIX}
+      - RMAP_WATERMARKING_KEY_PATH=${RMAP_WATERMARKING_KEY_PATH}
     depends_on:
       db:
         condition: service_healthy
@@ -68,6 +70,8 @@ secrets:
     file: private.key
   private_key_pass:
     environment: RMAP_SERVER_PRIVATE_KEY_PASS
+  watermarking_key:
+    environment: WATERMARKING_MASTER_KEY
   group_pdf:
     file: Group_02.pdf
   flag_2:
