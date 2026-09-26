@@ -265,8 +265,41 @@ def test_delete_document_deletes_database_record(tmp_path):
         "file_missing": True,
         "note": None,
     }
+    select_statement, select_parameters = select_connection.execute.call_args.args
+    assert "ownerid = :uid" in str(select_statement)
+    assert select_parameters == {"id": 3, "uid": 7}
+
     delete_connection = engine.begin.return_value.__enter__.return_value
-    assert delete_connection.execute.call_args.args[1] == {"id": 3}
+    delete_statement, delete_parameters = delete_connection.execute.call_args.args
+    assert "ownerid = :uid" in str(delete_statement)
+    assert delete_parameters == {"id": 3, "uid": 7}
+
+
+def test_delete_document_rejects_another_users_document():
+    app = create_app()
+    engine = MagicMock()
+    app.extensions["tatou-db"] = engine
+
+    select_connection = engine.connect.return_value.__enter__.return_value
+    select_result = MagicMock()
+    select_result.first.return_value = None
+    select_connection.execute.return_value = select_result
+
+    with app.app_context():
+        token = create_token(7, "alice", "user@example.com")
+
+    response = app.test_client().delete(
+        "/api/delete-document/3",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+    assert response.json == {"error": "document not found"}
+
+    select_statement, select_parameters = select_connection.execute.call_args.args
+    assert "ownerid = :uid" in str(select_statement)
+    assert select_parameters == {"id": 3, "uid": 7}
+    engine.begin.assert_not_called()
 
 
 # TODO: Test that missing and malformed delete-document IDs return 400.

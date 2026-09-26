@@ -384,10 +384,15 @@ def delete_document(document_id: int | None = None):
 
     try:
         with get_engine().connect() as connection:
-            # TODO: Enforce document ownership in the query
             row = connection.execute(
-                text("SELECT * FROM Documents WHERE id = :id"),
-                {"id": document_id},
+                text(
+                    "SELECT * FROM Documents "
+                    "WHERE id = :id AND ownerid = :uid"
+                ),
+                {
+                    "id": document_id,
+                    "uid": int(g.user["id"]),
+                },
             ).first()
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
@@ -428,8 +433,14 @@ def delete_document(document_id: int | None = None):
     try:
         with get_engine().begin() as connection:
             connection.execute(
-                text("DELETE FROM Documents WHERE id = :id"),
-                {"id": document_id},
+                text(
+                    "DELETE FROM Documents "
+                    "WHERE id = :id AND ownerid = :uid"
+                ),
+                {
+                    "id": document_id,
+                    "uid": int(g.user["id"]),
+                },
             )
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
