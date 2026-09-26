@@ -75,9 +75,9 @@ def _register_version(
         connection.execute(
             text(
                 """
-                INSERT INTO Versions 
+                INSERT INTO Versions
                     (documentid, link, intended_for, secret, method, path)
-                VALUES 
+                VALUES
                     (:documentid, :link, :intended_for, :secret, :method, :path)
                 """
             ),
