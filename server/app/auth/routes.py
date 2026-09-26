@@ -1,3 +1,4 @@
+import re
 from http import HTTPStatus
 
 from flask import current_app, jsonify, request
@@ -9,10 +10,12 @@ from ..db import get_engine
 from . import bp
 from .tokens import create_token
 
+_LOGIN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+
 
 @bp.post("/create-user")
 def create_user():
-    # TODO: Validate email, define password requirements
+    # TODO: Validate email
     if not request.is_json:
         return jsonify(
             {"error": "Content-Type must be application/json"}
@@ -29,6 +32,16 @@ def create_user():
     if not email or not login or not password:
         return jsonify(
             {"error": "email, login, and password are required"}
+        ), HTTPStatus.BAD_REQUEST
+
+    if _LOGIN_RE.fullmatch(login) is None:
+        return jsonify(
+            {
+                "error": (
+                    "login must be 1-64 characters using letters, numbers, "
+                    "periods, underscores, or hyphens"
+                )
+            }
         ), HTTPStatus.BAD_REQUEST
 
     password_hash = generate_password_hash(password)

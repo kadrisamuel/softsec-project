@@ -24,6 +24,25 @@ def test_create_user_preserves_missing_fields_response():
     }
 
 
+def test_create_user_rejects_login_with_path_separator():
+    response = create_app().test_client().post(
+        "/api/create-user",
+        json={
+            "email": "user@example.com",
+            "login": "../plugins",
+            "password": "test-password",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json == {
+        "error": (
+            "login must be 1-64 characters using letters, numbers, "
+            "periods, underscores, or hyphens"
+        )
+    }
+
+
 def test_create_user_creates_user():
     app = create_app()
     engine = MagicMock()
