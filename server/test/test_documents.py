@@ -1,4 +1,6 @@
 import datetime as dt
+import io
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -185,6 +187,54 @@ def test_write_document_route_requires_token(method, path):
     }
 
 
+def test_upload_document_confines_unsafe_filename(tmp_path):
+    app = create_app()
+    app.config["STORAGE_DIR"] = tmp_path
+    engine = MagicMock()
+    app.extensions["tatou-db"] = engine
+
+    connection = engine.begin.return_value.__enter__.return_value
+
+    document_id_result = MagicMock()
+    document_id_result.scalar.return_value = 3
+
+    document_result = MagicMock()
+    document_result.one.return_value = SimpleNamespace(
+        id=3,
+        name="payload.pkl",
+        creation=dt.datetime(2026, 9, 26, 12, 0),
+        sha256_hex="ABC123",
+        size=7,
+    )
+
+    connection.execute.side_effect = [
+        MagicMock(),
+        document_id_result,
+        document_result,
+    ]
+
+    with app.app_context():
+        token = create_token(7, "alice", "user@example.com")
+
+    response = app.test_client().post(
+        "/api/upload-document",
+        data={"file": (io.BytesIO(b"payload"), "../../payload.pkl")},
+        headers={"Authorization": f"Bearer {token}"},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 201
+
+    insert_parameters = connection.execute.call_args_list[0].args[1]
+    stored_path = Path(insert_parameters["path"]).resolve()
+    expected_directory = (tmp_path / "files" / "7").resolve()
+
+    assert insert_parameters["name"] == "payload.pkl"
+    assert stored_path.parent == expected_directory
+    assert stored_path.name.endswith("__payload.pkl")
+    assert stored_path.read_bytes() == b"payload"
+
+
 def test_delete_document_deletes_database_record(tmp_path):
     app = create_app()
     app.config["STORAGE_DIR"] = tmp_path
@@ -215,8 +265,41 @@ def test_delete_document_deletes_database_record(tmp_path):
         "file_missing": True,
         "note": None,
     }
+    select_statement, select_parameters = select_connection.execute.call_args.args
+    assert "ownerid = :uid" in str(select_statement)
+    assert select_parameters == {"id": 3, "uid": 7}
+
     delete_connection = engine.begin.return_value.__enter__.return_value
-    assert delete_connection.execute.call_args.args[1] == {"id": 3}
+    delete_statement, delete_parameters = delete_connection.execute.call_args.args
+    assert "ownerid = :uid" in str(delete_statement)
+    assert delete_parameters == {"id": 3, "uid": 7}
+
+
+def test_delete_document_rejects_another_users_document():
+    app = create_app()
+    engine = MagicMock()
+    app.extensions["tatou-db"] = engine
+
+    select_connection = engine.connect.return_value.__enter__.return_value
+    select_result = MagicMock()
+    select_result.first.return_value = None
+    select_connection.execute.return_value = select_result
+
+    with app.app_context():
+        token = create_token(7, "alice", "user@example.com")
+
+    response = app.test_client().delete(
+        "/api/delete-document/3",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+    assert response.json == {"error": "document not found"}
+
+    select_statement, select_parameters = select_connection.execute.call_args.args
+    assert "ownerid = :uid" in str(select_statement)
+    assert select_parameters == {"id": 3, "uid": 7}
+    engine.begin.assert_not_called()
 
 
 # TODO: Test that missing and malformed delete-document IDs return 400.

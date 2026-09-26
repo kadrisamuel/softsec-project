@@ -5,6 +5,7 @@ from pathlib import Path
 
 from flask import current_app, g, jsonify, request, send_file
 from sqlalchemy import text
+from werkzeug.utils import secure_filename
 
 from ..auth.tokens import require_auth
 from ..db import get_engine
@@ -44,18 +45,27 @@ def upload_document():
             {"error": "file is required (multipart/form-data)"}
         ), HTTPStatus.BAD_REQUEST
     file = request.files["file"]
-    if not file or file.filename == "":
+    if not file.filename:
         return jsonify({"error": "empty filename"}), HTTPStatus.BAD_REQUEST
 
-    # TODO: Sanitize the uploaded filename before using it in a filesystem path
-    filename = file.filename
-    user_directory = current_app.config["STORAGE_DIR"] / "files" / g.user["login"]
+    filename = secure_filename(file.filename)
+    if not filename:
+        return jsonify({"error": "invalid filename"}), HTTPStatus.BAD_REQUEST
+
+    storage_root = Path(current_app.config["STORAGE_DIR"]).resolve()
+    user_directory = _safe_resolve_under_storage(
+        f"files/{int(g.user['id'])}",
+        storage_root,
+    )
     user_directory.mkdir(parents=True, exist_ok=True)
 
-    timestamp = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S%fZ")
+    timestamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%S%fZ")
     final_name = request.form.get("name") or filename
     stored_name = f"{timestamp}__{filename}"
-    stored_path = user_directory / stored_name
+    stored_path = _safe_resolve_under_storage(
+        str(user_directory / stored_name),
+        storage_root,
+    )
     file.save(stored_path)
 
     sha256_hex = _sha256_file(stored_path)
@@ -374,10 +384,15 @@ def delete_document(document_id: int | None = None):
 
     try:
         with get_engine().connect() as connection:
-            # TODO: Enforce document ownership in the query
             row = connection.execute(
-                text("SELECT * FROM Documents WHERE id = :id"),
-                {"id": document_id},
+                text(
+                    "SELECT * FROM Documents "
+                    "WHERE id = :id AND ownerid = :uid"
+                ),
+                {
+                    "id": document_id,
+                    "uid": int(g.user["id"]),
+                },
             ).first()
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
@@ -418,8 +433,14 @@ def delete_document(document_id: int | None = None):
     try:
         with get_engine().begin() as connection:
             connection.execute(
-                text("DELETE FROM Documents WHERE id = :id"),
-                {"id": document_id},
+                text(
+                    "DELETE FROM Documents "
+                    "WHERE id = :id AND ownerid = :uid"
+                ),
+                {
+                    "id": document_id,
+                    "uid": int(g.user["id"]),
+                },
             )
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
