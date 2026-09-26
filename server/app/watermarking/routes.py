@@ -1,12 +1,6 @@
 import hashlib
-import pickle as standard_pickle
 from http import HTTPStatus
 from pathlib import Path
-
-try:
-    import dill as plugin_pickle
-except Exception:
-    plugin_pickle = standard_pickle
 
 from flask import current_app, jsonify, request
 from sqlalchemy import text
@@ -16,7 +10,7 @@ from ..auth.tokens import require_auth
 from ..db import get_engine
 from . import bp
 from . import utils as watermarking_utils
-from .method import WatermarkingError, WatermarkingMethod
+from .method import WatermarkingError
 
 
 @bp.post("/create-watermark")
@@ -216,91 +210,6 @@ def create_watermark(document_id: int | None = None):
             "position": position,
             "filename": filename,
             "size": len(watermarked_bytes),
-        }
-    ), HTTPStatus.CREATED
-
-
-@bp.post("/load-plugin")
-@require_auth
-def load_plugin():
-    payload = request.get_json(silent=True) or {}
-    filename = (payload.get("filename") or "").strip()
-    overwrite = bool(payload.get("overwrite", False))  # unused
-
-    if not filename:
-        return jsonify({"error": "filename is required"}), HTTPStatus.BAD_REQUEST
-
-    storage_root = Path(current_app.config["STORAGE_DIR"])
-    plugins_directory = storage_root / "files" / "plugins"
-    try:
-        plugins_directory.mkdir(parents=True, exist_ok=True)
-        plugin_path = plugins_directory / filename
-    except Exception:  # pylint: disable=broad-exception-caught
-        current_app.logger.exception(
-            "Failed to prepare plugin path for filename=%s",
-            filename,
-        )
-        return jsonify({"error": "plugin path error"}), HTTPStatus.INTERNAL_SERVER_ERROR
-
-    # TODO: Prevent path traversal and replace unsafe pickle/dill loading with a
-    # trusted plugin installation mechanism
-    if not plugin_path.exists():
-        return jsonify({"error": "plugin file not found"}), HTTPStatus.NOT_FOUND
-
-    try:
-        with plugin_path.open("rb") as file:
-            plugin = plugin_pickle.load(file)
-    except Exception:  # pylint: disable=broad-exception-caught
-        return jsonify(
-            {"error": "failed to deserialize plugin"}
-        ), HTTPStatus.BAD_REQUEST
-
-    if isinstance(plugin, type):
-        plugin_class = plugin
-    else:
-        plugin_class = plugin.__class__
-
-    method_name = getattr(
-        plugin_class,
-        "name",
-        getattr(plugin_class, "__name__", None),
-    )
-    if not method_name or not isinstance(method_name, str):
-        return jsonify(
-            {
-                "error": "plugin class must define a readable name (class.__name__ or .name)"
-            }
-        ), HTTPStatus.BAD_REQUEST
-
-    has_api = all(
-        hasattr(plugin_class, attribute)
-        for attribute in ("add_watermark", "read_secret")
-    )
-    if WatermarkingMethod is not None:
-        is_valid = issubclass(plugin_class, WatermarkingMethod) and has_api
-    else:
-        is_valid = has_api
-    if not is_valid:
-        return jsonify(
-            {
-                "error": (
-                    "plugin does not implement WatermarkingMethod API "
-                    "(add_watermark/read_secret)"
-                )
-            }
-        ), HTTPStatus.BAD_REQUEST
-
-    watermarking_utils.METHODS[method_name] = plugin_class()
-    return jsonify(
-        {
-            "loaded": True,
-            "filename": filename,
-            "registered_as": method_name,
-            "class_qualname": (
-                f"{getattr(plugin_class, '__module__', '?')}."
-                f"{getattr(plugin_class, '__qualname__', plugin_class.__name__)}"
-            ),
-            "methods_count": len(watermarking_utils.METHODS),
         }
     ), HTTPStatus.CREATED
 
