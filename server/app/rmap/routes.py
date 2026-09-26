@@ -62,7 +62,12 @@ def _check_link_collision(expected_link: str) -> bool:
 
 
 def _register_version(
-    document_id: int, expected_link: str, secret: str, method: str, path: str
+    document_id: int,
+    expected_link: str,
+    intended_for: str,
+    secret: str,
+    method: str,
+    path: str,
 ) -> None:
     """Register new watermarked version in version table"""
 
@@ -70,13 +75,16 @@ def _register_version(
         connection.execute(
             text(
                 """
-                INSERT INTO Versions (documentid, link, secret, method, path)
-                VALUES (:documentid, :link, :secret, :method, :path)
+                INSERT INTO Versions 
+                    (documentid, link, intended_for, secret, method, path)
+                VALUES 
+                    (:documentid, :link, :intended_for, :secret, :method, :path)
                 """
             ),
             {
                 "documentid": document_id,
                 "link": expected_link,
+                "intended_for": intended_for,
                 "secret": secret,
                 "method": method,
                 "path": path,
@@ -169,7 +177,14 @@ def rmap_get_link():
 
     # Register new version
     try:
-        _register_version(document_id, expected_link, secret, method, out_path)
+        _register_version(
+            document_id=document_id,
+            expected_link=expected_link,
+            intended_for=identity,
+            secret=secret,
+            method=method,
+            path=out_path,
+        )
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while creating version with link=%s",
