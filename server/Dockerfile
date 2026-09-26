@@ -23,9 +23,10 @@ RUN chmod 400 /app/flag
 
 # Create and switch to non-root user pyu
 # Let pyu write to /app/storage only
-RUN adduser --system --no-create-home pyu
+RUN groupadd -g 1000 pyugroup && \
+    useradd --system --no-create-home -u 1000 -g pyugroup pyu
 RUN mkdir -p /app/storage \
-    && chown -R pyu:nogroup /app/storage \
+    && chown -R pyu:pyugroup /app/storage \
     && chmod 750 /app/storage
 USER pyu
 

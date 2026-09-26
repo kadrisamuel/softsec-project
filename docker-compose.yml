@@ -10,10 +10,18 @@ services:
     ports:
       - "${APP_PORT:-5000}:5000"
     secrets:
-      - private_key
-      - private_key_pass
-      - watermarking_key
-      - group_pdf
+      - source: private_key
+        uid: "1000"
+        gid: "1000"
+      - source: private_key_pass
+        uid: "1000"
+        gid: "1000"
+      - source: watermarking_key
+        uid: "1000"
+        gid: "1000"
+      - source: group_pdf
+        uid: "1000"
+        gid: "1000"
     volumes:
       - user-files:/app/storage
     environment:
