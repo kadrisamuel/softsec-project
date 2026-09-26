@@ -12,6 +12,7 @@ from ..db import get_engine
 from ..watermarking.method import WatermarkingError
 from ..watermarking.utils import apply_watermark
 from . import bp
+from .source_document import get_source_document_path
 
 
 def _read_watermarking_key(app) -> str:
@@ -124,21 +125,42 @@ def rmap_get_link():
     secret: str = os.urandom(32).hex()
     method: str = current_app.config["RMAP_WATERMARK_METHOD"]
 
+    # Resolve registered group pdf path
+    try:
+        source_document_path = get_source_document_path(
+            current_app,
+            document_id,
+        )
+    except Exception:  # pylint: disable=broad-exception-caught
+        current_app.logger.exception(
+            "Unable to resolve RMAP source document id=%s",
+            document_id,
+        )
+        return jsonify(
+            {"error": "source document unavailable"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
+
     # Watermark group pdf
-    with open(
-        "/run/secrets/group_pdf", "rb"
-    ) as pdf:  # TODO: Get group pdf path from document table?
-        try:
+    try:
+        with source_document_path.open("rb") as pdf:
             watermarked_pdf_data = apply_watermark(
                 method=method,
                 pdf=pdf,
                 secret=secret,
                 key=watermark_key,
             )
-        except (WatermarkingError, ValueError):
-            return jsonify(
-                {"error": "watermarking failed"}
-            ), HTTPStatus.INTERNAL_SERVER_ERROR
+    except (WatermarkingError, ValueError):
+        return jsonify(
+            {"error": "watermarking failed"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
+    except OSError:
+        current_app.logger.exception(
+            "Unable to read RMAP source document id=%s",
+            document_id,
+        )
+        return jsonify(
+            {"error": "source document unavailable"}
+        ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     # Write watermarked pdf to storage
     out_path = f"{current_app.config['STORAGE_DIR'].resolve()}/{expected_link}.pdf"

@@ -154,3 +154,52 @@ def ensure_source_document(app: Flask) -> int:
         )
 
     return document_id
+
+
+def get_source_document_path(
+    app: Flask,
+    document_id: int,
+) -> Path:
+    """Return the validated storage path for a registered document."""
+
+    engine = app.extensions["tatou-db"]
+
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                """
+                SELECT path
+                FROM Documents
+                WHERE id = :document_id
+                LIMIT 1
+                """
+            ),
+            {"document_id": document_id},
+        ).first()
+
+    if row is None:
+        raise RuntimeError(
+            f"RMAP source document {document_id} is not registered"
+        )
+
+    storage_root = Path(app.config["STORAGE_DIR"]).resolve()
+    document_path = Path(row.path)
+
+    if not document_path.is_absolute():
+        document_path = storage_root / document_path
+
+    document_path = document_path.resolve()
+
+    try:
+        document_path.relative_to(storage_root)
+    except ValueError as exc:
+        raise RuntimeError(
+            "RMAP source document path escapes storage directory"
+        ) from exc
+
+    if not document_path.is_file():
+        raise RuntimeError(
+            f"RMAP source document file is missing: {document_path}"
+        )
+
+    return document_path
