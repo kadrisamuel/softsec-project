@@ -208,3 +208,11 @@ __marimo__/
 
 # MacOS files
 *.DS_Store
+
+# Local RMAP testing
+/private.key
+/Group_02.pdf
+/local-rmap/
+/server/keys/Public-keys-20260914/Local_*.asc
+/output/rmap/
+/server/tmp/
