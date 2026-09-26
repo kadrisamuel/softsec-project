@@ -9,6 +9,11 @@ services:
         - flag_2
     ports:
       - "${APP_PORT:-5000}:5000"
+    secrets:
+      - private_key
+      - private_key_pass
+      - watermarking_key
+      - group_pdf
     volumes:
       - user-files:/app/storage
     environment:
@@ -25,7 +30,7 @@ services:
       - ENABLE_AUTH_ROUTES=${ENABLE_AUTH_ROUTES:-false}
       - ENABLE_DOCUMENT_ROUTES=${ENABLE_DOCUMENT_ROUTES:-false}
       - ENABLE_WATERMARKING_ROUTES=${ENABLE_WATERMARKING_ROUTES:-false}
-      - FLAG_2=${FLAG_2}
+      - ENABLE_RMAP_ROUTES=${ENABLE_RMAP_ROUTES:-false}
     depends_on:
       db:
         condition: service_healthy
@@ -54,5 +59,13 @@ volumes:
   user-files:
 
 secrets:
+  private_key:
+    file: private.key
+  private_key_pass:
+    environment: RMAP_SERVER_PRIVATE_KEY_PASS
+  watermarking_key:
+    environment: WATERMARKING_MASTER_KEY
+  group_pdf:
+    file: Group_02.pdf
   flag_2:
     environment: FLAG_2

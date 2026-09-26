@@ -1,10 +1,13 @@
 # Server image: minimal Flask + Gunicorn
-FROM python:3.12-slim
+FROM python:3.12-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
+
+# Copy public keys
+COPY keys/Public-keys-20260914/*.asc /app/pub-keys/
 
 # Copy the package and install runtime dependencies
 COPY pyproject.toml /app/pyproject.toml
