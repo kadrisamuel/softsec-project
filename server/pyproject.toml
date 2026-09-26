@@ -10,7 +10,7 @@ dependencies = [
 	"PyMySQL==1.2.3",
 	"SQLAlchemy==2.0.54",
 	"dill==0.4.1",
-	"rmap @ git+https://github.com/nharrand/RMAP.git@v1.0.2"
+	"rmap @ git+https://github.com/nharrand/RMAP.git@v1.0.2",
 ]
 
 [project.optional-dependencies]
@@ -23,7 +23,13 @@ dev = [
 ]
 
 [tool.pylint."messages control"]
-disable = ["cyclic-import", "too-few-public-methods"]
+disable = [
+	"cyclic-import",
+	"too-few-public-methods",
+	"too-many-arguments",
+	"too-many-positional-arguments",
+	"too-many-return-statements",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q"
