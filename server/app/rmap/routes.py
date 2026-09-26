@@ -12,10 +12,10 @@ from ..watermarking.method import WatermarkingError
 from ..watermarking.utils import apply_watermark
 from . import bp
 
-METHOD = "toy-eof"  # TODO: Replace with final watermarking
-
 # Read private key pass from secret file
-with open("/run/secrets/private_key_pass", encoding="utf8") as pass_file:
+with open(
+    current_app.config["RMAP_SERVER_PRIVATE_KEY_PASS_FILE"], encoding="utf8"
+) as pass_file:
     private_key_pass = pass_file.read().strip()
 
 # Use SHA3-256 private key password hex hash as key for watermarking
@@ -23,12 +23,12 @@ watermark_key = sha3_256(private_key_pass.encode()).hexdigest()
 
 # Prepare RMAP server
 rmap_server = rmap.RMAPServer(
-    server_public_key_path="pub-keys/Group_02.asc",
-    server_private_key_path="/run/secrets/private_key",
+    server_public_key_path=current_app.config["RMAP_SERVER_PUBLIC_KEY_PATH"],
+    server_private_key_path=current_app.config["RMAP_SERVER_PRIVATE_KEY_PATH"],
     passphrase=private_key_pass,
-    linkPrefix="http://softsec-group-02.dsv.local.su.se:5000/get-version/"
+    linkPrefix=current_app.config["RMAP_LINK_PREFIX"],
 )
-rmap_server.loadIdentities("pub-keys")
+rmap_server.loadIdentities(current_app.config["RMAP_CLIENT_KEYS_DIR"])
 
 
 @bp.post("/rmap-initiate")
@@ -79,7 +79,10 @@ def rmap_get_link():
     with open("/run/secrets/group_pdf", "rb") as pdf:
         try:
             watermarked_pdf_data = apply_watermark(
-                METHOD, pdf, secret=identity, key=watermark_key
+                current_app.config["RMAP_WATERMARK_METHOD"],
+                pdf,
+                secret=identity,
+                key=watermark_key,
             )
         except (WatermarkingError, ValueError):
             return jsonify(
@@ -93,7 +96,7 @@ def rmap_get_link():
 
     # Register new version
     try:
-        with get_engine().connect() as connection:
+        with get_engine().begin() as connection:
             row = connection.execute(
                 text(
                     """
@@ -105,7 +108,7 @@ def rmap_get_link():
                     "documentid": document_id,  # TODO: Insert correct document id
                     "link": expected_link,
                     "secret": identity,
-                    "method": METHOD,
+                    "method": current_app.config["RMAP_WATERMARK_METHOD"],
                     "path": out_path,
                 },
             )
