@@ -130,7 +130,7 @@ def rmap_get_link():
     watermark_key: str = _derive_key(
         _read_watermarking_key(current_app), document_id, identity, expected_link
     )
-    secret: str = os.urandom(32).hex()
+    secret: str = os.urandom(16).hex()
     method: str = current_app.config["RMAP_WATERMARK_METHOD"]
 
     # Resolve registered group pdf path
