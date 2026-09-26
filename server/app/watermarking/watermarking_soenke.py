@@ -129,7 +129,7 @@ class WatermarkingSoenke(WatermarkingMethod):
         pdf: PdfSource,
         secret: str,
         key: str,
-        _: str | None = None,
+        position: str | None = None,
     ) -> bytes:
         """Add watermark to PDF"""
 
