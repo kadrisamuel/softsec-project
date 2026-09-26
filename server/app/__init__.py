@@ -48,6 +48,12 @@ def create_app(config_class=Config):
     if app.config.get("ENABLE_RMAP_ROUTES", False):
         rmap_server.init_app(app)
 
+        from .rmap.source_document import ensure_source_document
+
+        app.extensions["rmap-document-id"] = (
+            ensure_source_document(app)
+        )
+
         from .rmap import bp as rmap_bp
 
         app.register_blueprint(rmap_bp)
