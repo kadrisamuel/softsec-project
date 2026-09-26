@@ -1,4 +1,5 @@
 """Test catalog for Soenke's watermarking"""
+# pylint: disable=redefined-outer-name
 
 from random import Random
 
@@ -12,13 +13,6 @@ from app.watermarking.watermarking_soenke import (
     _sanity_check_inputs,
 )
 from reedsolo import RSCodec
-
-
-@pytest.fixture(scope="session")
-def sample_pdf():
-    """Sample pdf shared between tests"""
-
-    return "sample.pdf"
 
 
 @pytest.fixture(scope="session")
