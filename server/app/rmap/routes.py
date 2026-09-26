@@ -13,8 +13,6 @@ from ..watermarking.method import WatermarkingError
 from ..watermarking.utils import apply_watermark
 from . import bp
 
-DOCUMENT_ID = "0"  # TODO: Insert correct document id
-
 
 def _read_watermarking_key(app) -> str:
     """Read watermarking master key from secret"""
@@ -24,7 +22,7 @@ def _read_watermarking_key(app) -> str:
 
 
 def _derive_key(
-    master_key: str, document_id: str, issuer: str, expected_link: str
+    master_key: str, document_id: int, issuer: str, expected_link: str
 ) -> str:
     """Derives a key for a RMAP requested file encoded as a hex string"""
 
@@ -37,7 +35,7 @@ def _derive_key(
     )
     return argon2id.derive(
         master_key.encode()
-        + document_id.encode()
+        + str(document_id).encode()
         + issuer.encode()
         + expected_link.encode()
     ).hex()
@@ -63,7 +61,7 @@ def _check_link_collision(expected_link: str) -> bool:
 
 
 def _register_version(
-    document_id: str, expected_link: str, secret: str, method: str, path: str
+    document_id: int, expected_link: str, secret: str, method: str, path: str
 ) -> None:
     """Register new watermarked version in version table"""
 
@@ -100,6 +98,7 @@ def rmap_get_link():
     identity, expected_link, response2 = current_app.extensions[
         "rmap-server"
     ].receiveMsg2(request.get_json())
+    document_id = int(current_app.extensions["rmap-document-id"])
 
     # Check for link collision
     try:
@@ -120,7 +119,7 @@ def rmap_get_link():
 
     # Prepare watermarking params
     watermark_key: str = _derive_key(
-        _read_watermarking_key(current_app), DOCUMENT_ID, identity, expected_link
+        _read_watermarking_key(current_app), document_id, identity, expected_link
     )
     secret: str = os.urandom(32).hex()
     method: str = current_app.config["RMAP_WATERMARK_METHOD"]
@@ -148,7 +147,7 @@ def rmap_get_link():
 
     # Register new version
     try:
-        _register_version(DOCUMENT_ID, expected_link, secret, method, out_path)
+        _register_version(document_id, expected_link, secret, method, out_path)
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
             "DB error while creating version with link=%s",
