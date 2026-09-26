@@ -209,9 +209,11 @@ class WatermarkingSoenke(WatermarkingMethod):
             Image.fromarray(pagearray, mode="YCbCr").convert("RGB").save(
                 pagebytes, format="PNG"
             )
-            document.new_page(page_index).insert_image(
-                rect=document[page_index].rect, stream=pagebytes
-            )
+            document.new_page(
+                page_index,
+                width=document[page_index].rect.width,
+                height=document[page_index].rect.height,
+            ).insert_image(rect=document[page_index].rect, stream=pagebytes)
             document.delete_page(page_index + 1)
 
         return document.tobytes()
