@@ -1,9 +1,9 @@
 """Implementation of the RMAP endpoints"""
 
+import os
 from hashlib import sha3_256
 from http import HTTPStatus
 
-import rmap
 from flask import current_app, jsonify, request
 from sqlalchemy import text
 
@@ -14,28 +14,19 @@ from . import bp
 
 # Read private key pass from secret file
 with open(
-    current_app.config["RMAP_SERVER_PRIVATE_KEY_PASS_FILE"], encoding="utf8"
+    os.environ.get("RMAP_SERVER_PRIVATE_KEY_PASS_FILE"), encoding="utf8"
 ) as pass_file:
     private_key_pass = pass_file.read().strip()
 
 # Use SHA3-256 private key password hex hash as key for watermarking
 watermark_key = sha3_256(private_key_pass.encode()).hexdigest()
 
-# Prepare RMAP server
-rmap_server = rmap.RMAPServer(
-    server_public_key_path=current_app.config["RMAP_SERVER_PUBLIC_KEY_PATH"],
-    server_private_key_path=current_app.config["RMAP_SERVER_PRIVATE_KEY_PATH"],
-    passphrase=private_key_pass,
-    linkPrefix=current_app.config["RMAP_LINK_PREFIX"],
-)
-rmap_server.loadIdentities(current_app.config["RMAP_CLIENT_KEYS_DIR"])
-
 
 @bp.post("/rmap-initiate")
 def rmap_initiate():
     """Process RMAP message 1"""
 
-    _, response1 = rmap_server.receiveMsg1(request.get_json())
+    _, response1 = current_app.extensions["rmap-server"].receiveMsg1(request.get_json())
     return jsonify(response1), HTTPStatus.OK
 
 
@@ -43,7 +34,9 @@ def rmap_initiate():
 def rmap_get_link():
     """Process RMAP message 2"""
 
-    identity, expected_link, response2 = rmap_server.receiveMsg2(request.get_json())
+    identity, expected_link, response2 = current_app.extensions[
+        "rmap-server"
+    ].receiveMsg2(request.get_json())
 
     # Check for link collision
     try:
