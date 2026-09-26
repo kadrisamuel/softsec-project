@@ -25,7 +25,8 @@ jobs:
         run: pip install -e server[dev]
 
       - name: Run Pylint
-        run: pylint --output-format=github server/app/
+        run: pylint --output-format=github app
+        working-directory: ./server
 
   # Pyright
   typecheck:
@@ -43,7 +44,8 @@ jobs:
         run: pip install -e server[dev]
 
       - name: Run Pyright
-        run: pyright server/app/
+        run: pyright app
+        working-directory: ./server
 
   # Bandit
   securitycheck:
@@ -61,7 +63,8 @@ jobs:
         run: pip install -e server[dev]
 
       - name: Run Bandit
-        run: bandit -r server/app/
+        run: bandit -r app
+        working-directory: ./server
 
   # Pytest
   test:
@@ -79,4 +82,5 @@ jobs:
         run: pip install -e server[dev]
 
       - name: Run Pytest
-        run: pytest server
+        run: pytest .
+        working-directory: ./server
