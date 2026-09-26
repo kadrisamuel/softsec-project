@@ -48,3 +48,4 @@ class Config:  # pylint: disable=too-few-public-methods
         "RMAP_LINK_PREFIX",
         "http://softsec-group-02.dsv.local.su.se:5000/api/get-version/",
     )
+    RMAP_WATERMARKING_KEY_PATH = os.environ.get("RMAP_WATERMARKING_KEY_PATH", "/run/secrets/watermarking_key")
