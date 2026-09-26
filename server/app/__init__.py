@@ -45,14 +45,14 @@ def create_app(config_class=Config):
 
         app.register_blueprint(watermarking_bp)
 
-    if app.config.get("ENABLE_RMAP_ROUTES", False):
+    if app.config.get("ENABLE_DOCUMENT_ROUTES", False) and app.config.get(
+        "ENABLE_RMAP_ROUTES", False
+    ):
         rmap_server.init_app(app)
 
         from .rmap.source_document import ensure_source_document
 
-        app.extensions["rmap-document-id"] = (
-            ensure_source_document(app)
-        )
+        app.extensions["rmap-document-id"] = ensure_source_document(app)
 
         from .rmap import bp as rmap_bp
 
