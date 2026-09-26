@@ -49,3 +49,11 @@ class Config:  # pylint: disable=too-few-public-methods
         "http://softsec-group-02.dsv.local.su.se:5000/api/get-version/",
     )
     RMAP_WATERMARKING_KEY_PATH = os.environ.get("RMAP_WATERMARKING_KEY_PATH", "/run/secrets/watermarking_key")
+    RMAP_SOURCE_PDF_PATH = Path(
+    os.environ.get(
+        "RMAP_SOURCE_PDF_PATH", "/run/secrets/group_pdf",
+        )
+    )
+    RMAP_SOURCE_DOCUMENT_NAME = os.environ.get(
+        "RMAP_SOURCE_DOCUMENT_NAME", "Group_2.pdf",
+    )
