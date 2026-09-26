@@ -50,10 +50,12 @@ class Config:  # pylint: disable=too-few-public-methods
     )
     RMAP_WATERMARKING_KEY_PATH = os.environ.get("RMAP_WATERMARKING_KEY_PATH", "/run/secrets/watermarking_key")
     RMAP_SOURCE_PDF_PATH = Path(
-    os.environ.get(
-        "RMAP_SOURCE_PDF_PATH", "/run/secrets/group_pdf",
+        os.environ.get(
+            "RMAP_SOURCE_PDF_PATH",
+            "/run/secrets/group_pdf",
         )
     )
     RMAP_SOURCE_DOCUMENT_NAME = os.environ.get(
-        "RMAP_SOURCE_DOCUMENT_NAME", "Group_2.pdf",
+        "RMAP_SOURCE_DOCUMENT_NAME",
+        "Group_2.pdf",
     )
