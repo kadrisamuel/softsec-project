@@ -17,9 +17,8 @@ RUN pip install --no-cache-dir -e .
 COPY entrypoint.py /app/entrypoint.py
 
 # Initialize second flag
-COPY flag /app/flag
+COPY --chmod=600 flag /app/flag
 RUN --mount=type=secret,id=flag_2 sed -i "s/REPLACE_THIS_STRING_WITH_SERVER_FLAG/$(cat /run/secrets/flag_2)/g" /app/flag
-RUN chmod 400 /app/flag
 
 # Create and switch to non-root user pyu
 # Let pyu write to /app/storage only
