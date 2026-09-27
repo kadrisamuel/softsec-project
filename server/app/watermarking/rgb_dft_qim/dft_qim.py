@@ -97,7 +97,7 @@ def _coefficient_pairs(
     count: int,
     key: bytes,
 ) -> list[tuple[tuple[int, int], tuple[int, int]]]:
-    """Choose two keyed low-to-mid-frequency coefficients per bit."""
+    """Select two keyed low-to-mid-frequency coefficients for every embedded bit."""
     candidates = []
 
     for row in range(height):
@@ -195,7 +195,7 @@ def _extract_channel(
     pairs: list[tuple[tuple[int, int], tuple[int, int]]],
     dither_key: bytes,
 ) -> np.ndarray:
-    """Read each bit from the closer of the two keyed QIM grids."""
+    """Extract bits from one colour channel."""
 
     spectrum = np.fft.rfft2(channel.astype(np.float64))
     bits = np.empty(bit_count, dtype=np.uint8)

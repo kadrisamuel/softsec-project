@@ -192,7 +192,7 @@ def _build_image_pdf(
 def _majority_vote_bytes(
     candidates: list[bytes],
 ) -> bytes:
-    """Vote on each bit; use the first candidate to break a tie."""
+    """Recover bytes by selecting the most common value of each bit."""
     if not candidates:
         raise ValueError("At least one candidate is required")
 
@@ -273,7 +273,7 @@ def extract_bytes_from_pdf(
     position_key: bytes,
     dither_key: bytes,
 ) -> bytes:
-    """Vote across usable tiles within each page, then across pages."""
+    """Extract data by voting across every tile on every page."""
     page_candidates = []
 
     for rendered_image, _, _ in _render_pages(pdf):

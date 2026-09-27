@@ -1,17 +1,21 @@
-"""Reorder encoded bytes using a repeatable, key-dependent permutation.
-
-Frequency coefficient placement is controlled separately by ``dft_qim.py``.
+"""
+Purpose - Keyed Scrambling:
+* Hide which image locations contain the secret, HMAC, or parity bytes.
+* Make targeted removal harder without the key.
+* Break up the predictable structure of the encoded message.
 """
 
 import hmac
 
 
 def interleave_bytes(data: bytes, key: bytes) -> bytes:
+    """Reorder bytes using a repeatable permutation derived from the key."""
     permutation = _permutation(len(data), key)
     return bytes(data[index] for index in permutation)
 
 
 def deinterleave_bytes(data: bytes, key: bytes) -> bytes:
+    """Put interleaved bytes back in their original order."""
     permutation = _permutation(len(data), key)
     restored = bytearray(len(data))
 

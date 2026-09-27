@@ -1,3 +1,5 @@
+"""Expose RGB DFT-QIM watermarking through the common method interface."""
+
 from __future__ import annotations
 
 import re
@@ -26,7 +28,7 @@ from ..method import (
 
 
 class RGBDFTQIMWatermark(WatermarkingMethod):
-    """Add a visible repeated identifier and a hidden RGB watermark to each PDF page."""
+    """Raster watermark using RGB frequency-domain embedding"""
 
     name: Final[str] = "rgb-dft-qim-v1"
 
@@ -40,7 +42,8 @@ class RGBDFTQIMWatermark(WatermarkingMethod):
 
     @staticmethod
     def _validate_secret(secret: str) -> None:
-        """Require a 128-bit identifier written as lowercase hexadecimal."""
+        """The secret is the information embedded in the PDF and recovered later.
+        Here, it is a 128-bit watermark identifier represented by 32 hex characters"""
         if not isinstance(secret, str) or re.fullmatch(
             r"[0-9a-f]{32}", secret
         ) is None:
@@ -50,7 +53,13 @@ class RGBDFTQIMWatermark(WatermarkingMethod):
 
     @staticmethod
     def _validate_key(key: str) -> None:
-        """Require a master key for the implemented message and image layers."""
+        """The key controls where and how the watermark is embedded.
+        It is used to calculate values for:
+        * QIM coefficient positions
+        * Pilot pattern
+        * Bit interleaving
+        * HMAC authentication
+        * Visible mark placement"""
         if not isinstance(key, str) or not key:
             raise ValueError("Key must be a non-empty string")
 

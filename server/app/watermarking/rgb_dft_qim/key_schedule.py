@@ -1,3 +1,5 @@
+"""Derive independent subkeys for the RGB DFT-QIM components."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
