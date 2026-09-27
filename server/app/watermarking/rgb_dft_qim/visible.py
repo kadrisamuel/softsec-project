@@ -1,3 +1,5 @@
+"""Build and draw the visible identifier on RGB page images."""
+
 from __future__ import annotations
 
 import hmac

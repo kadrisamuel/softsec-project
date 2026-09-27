@@ -38,19 +38,18 @@ This module also exposes :func:`load_pdf_bytes` and :func:`is_pdf_bytes`
 which are convenience helpers many implementations will find useful.
 
 """
+
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import IO, ClassVar, TypeAlias, Union
-import io
 import os
+from abc import ABC, abstractmethod
+from typing import IO, ClassVar, TypeAlias
 
 # ----------------------------
 # Public type aliases & errors
 # ----------------------------
 
-PdfSource: TypeAlias = Union[bytes, str, os.PathLike[str], IO[bytes]]
+PdfSource: TypeAlias = bytes | str | os.PathLike[str] | IO[bytes]
 """Accepted input type for a PDF document.
 
 Implementations should *not* assume the input is a file path; always call
@@ -74,6 +73,7 @@ class InvalidKeyError(WatermarkingError):
 # ----------------------------
 # Helper functions
 # ----------------------------
+
 
 def load_pdf_bytes(src: PdfSource) -> bytes:
     """Normalize a :class:`PdfSource` into raw ``bytes``.
@@ -105,9 +105,7 @@ def load_pdf_bytes(src: PdfSource) -> bytes:
         # Treat as a binary file-like (IO[bytes])
         data = src.read()  # type: ignore[attr-defined]
     else:
-        raise TypeError(
-            "Unsupported PdfSource; expected bytes, path, or binary IO"
-        )
+        raise TypeError("Unsupported PdfSource; expected bytes, path, or binary IO")
 
     if not is_pdf_bytes(data):
         raise ValueError("Input does not look like a valid PDF (missing %PDF header)")
@@ -128,6 +126,7 @@ def is_pdf_bytes(data: bytes) -> bool:
 # Abstract base class (the contract)
 # ---------------------------------
 
+
 class WatermarkingMethod(ABC):
     """Abstract base class for PDF watermarking algorithms.
 
@@ -140,14 +139,13 @@ class WatermarkingMethod(ABC):
     #: Concrete implementations should override this with a short name
     #: (e.g., "toy-eof", "xmp-metadata", "object-stream").
     name: ClassVar[str] = "abstract"
-    
-    
+
     @staticmethod
     @abstractmethod
     def get_usage() -> str:
         """Return a a string containing a description of the expected usage.
 
-        It's highly recommended to provide a description if custom position 
+        It's highly recommended to provide a description if custom position
         is expected.
 
         Returns
@@ -197,14 +195,14 @@ class WatermarkingMethod(ABC):
             If inputs are invalid (e.g., not a PDF or empty secret).
         """
         raise NotImplementedError
-        
+
     @abstractmethod
     def is_watermark_applicable(
         self,
         pdf: PdfSource,
         position: str | None = None,
     ) -> bool:
-        """Return whether the method is applicable on this specific method 
+        """Return whether the method is applicable on this specific method
 
         Parameters
         ----------
@@ -261,12 +259,11 @@ class WatermarkingMethod(ABC):
 
 
 __all__ = [
-    "PdfSource",
-    "WatermarkingError",
-    "SecretNotFoundError",
     "InvalidKeyError",
-    "load_pdf_bytes",
-    "is_pdf_bytes",
+    "PdfSource",
+    "SecretNotFoundError",
+    "WatermarkingError",
     "WatermarkingMethod",
+    "is_pdf_bytes",
+    "load_pdf_bytes",
 ]
-

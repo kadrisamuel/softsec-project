@@ -1,3 +1,6 @@
+"""Documents blueprint routes"""
+# pylint: disable=duplicate-code
+
 import datetime as dt
 import hashlib
 from http import HTTPStatus
@@ -13,6 +16,8 @@ from . import bp
 
 
 def _sha256_file(path: Path) -> str:
+    """Calculate SHA256 checksum for file"""
+
     digest = hashlib.sha256()
     with path.open("rb") as file:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
@@ -21,6 +26,8 @@ def _sha256_file(path: Path) -> str:
 
 
 def _safe_resolve_under_storage(path: str, storage_root: Path) -> Path:
+    """Check sanity of file path"""
+
     storage_root = storage_root.resolve()
     file_path = Path(path)
     if not file_path.is_absolute():
@@ -32,14 +39,16 @@ def _safe_resolve_under_storage(path: str, storage_root: Path) -> Path:
     else:
         try:
             file_path.relative_to(storage_root)
-        except ValueError:
-            raise RuntimeError(f"path {file_path} escapes storage root {storage_root}")
+        except ValueError as e:
+            raise RuntimeError(f"path {file_path} escapes storage root {storage_root}") from e
     return file_path
 
 
 @bp.post("/upload-document")
 @require_auth
 def upload_document():
+    """Upload new document for user"""
+
     if "file" not in request.files:
         return jsonify(
             {"error": "file is required (multipart/form-data)"}
@@ -125,6 +134,8 @@ def upload_document():
 @bp.get("/list-documents")
 @require_auth
 def list_documents():
+    """List all documents owned by user"""
+
     try:
         with get_engine().connect() as connection:
             rows = connection.execute(
@@ -163,6 +174,8 @@ def list_documents():
 @bp.get("/list-versions/<int:document_id>")
 @require_auth
 def list_versions(document_id: int | None = None):
+    """List all versions of document owned by user"""
+
     if document_id is None:
         document_id = request.args.get("id") or request.args.get("documentid")
         try:
@@ -209,6 +222,8 @@ def list_versions(document_id: int | None = None):
 @bp.get("/list-all-versions")
 @require_auth
 def list_all_versions():
+    """List all versions of documents owned by user"""
+
     try:
         with get_engine().connect() as connection:
             rows = connection.execute(
@@ -244,6 +259,8 @@ def list_all_versions():
 @bp.get("/get-document/<int:document_id>")
 @require_auth
 def get_document(document_id: int | None = None):
+    """Download document owned by user"""
+
     if document_id is None:
         document_id = request.args.get("id") or request.args.get("documentid")
         try:
@@ -312,6 +329,8 @@ def get_document(document_id: int | None = None):
 # TODO: Review whether version files should remain accessible without a token.
 @bp.get("/get-version/<link>")
 def get_version(link: str):
+    """Download version with secret link"""
+
     try:
         with get_engine().connect() as connection:
             row = connection.execute(
@@ -371,6 +390,8 @@ def get_version(link: str):
 @bp.route("/delete-document/<document_id>", methods=["DELETE"])
 @require_auth
 def delete_document(document_id: int | None = None):
+    """Delete document owned by user"""
+
     if not document_id:
         document_id = (
             request.args.get("id")
@@ -385,10 +406,7 @@ def delete_document(document_id: int | None = None):
     try:
         with get_engine().connect() as connection:
             row = connection.execute(
-                text(
-                    "SELECT * FROM Documents "
-                    "WHERE id = :id AND ownerid = :uid"
-                ),
+                text("SELECT * FROM Documents WHERE id = :id AND ownerid = :uid"),
                 {
                     "id": document_id,
                     "uid": int(g.user["id"]),
@@ -433,10 +451,7 @@ def delete_document(document_id: int | None = None):
     try:
         with get_engine().begin() as connection:
             connection.execute(
-                text(
-                    "DELETE FROM Documents "
-                    "WHERE id = :id AND ownerid = :uid"
-                ),
+                text("DELETE FROM Documents WHERE id = :id AND ownerid = :uid"),
                 {
                     "id": document_id,
                     "uid": int(g.user["id"]),

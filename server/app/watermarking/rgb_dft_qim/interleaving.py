@@ -9,11 +9,13 @@ import hmac
 
 
 def interleave_bytes(data: bytes, key: bytes) -> bytes:
+    """Reorder bytes using a repeatable permutation derived from the key."""
     permutation = _permutation(len(data), key)
     return bytes(data[index] for index in permutation)
 
 
 def deinterleave_bytes(data: bytes, key: bytes) -> bytes:
+    """Put interleaved bytes back in their original order."""
     permutation = _permutation(len(data), key)
     restored = bytearray(len(data))
 

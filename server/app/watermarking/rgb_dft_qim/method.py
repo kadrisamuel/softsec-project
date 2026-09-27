@@ -1,3 +1,5 @@
+"""Expose RGB DFT-QIM watermarking through the common method interface."""
+
 from __future__ import annotations
 
 import re
@@ -33,8 +35,9 @@ class RGBDFTQIMWatermark(WatermarkingMethod):
     @staticmethod
     def get_usage() -> str:
         return (
-            "Embeds a 32-character hexadecimal secret into a PDF."
-            "The position parameter will later accept JSON configuration."
+            "Embeds a secret (32 lowercase hexadecimal characters) in every "
+            "PDF page image and adds a visible identifier. "
+            "The position parameter is accepted but ignored."
         )
 
     @staticmethod

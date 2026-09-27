@@ -1,3 +1,5 @@
+"""Embed and extract keyed QIM bits in RGB Fourier coefficients."""
+
 import hmac
 
 import numpy as np
@@ -14,10 +16,9 @@ def embed_bytes(
     position_key: bytes,
     dither_key: bytes,
 ) -> np.ndarray:
-    # np.unpackbits converts 53 bytes into 424 bits.
-    # Extraction gets three decisions per bit—one from
-    # each RGB channel—and accepts a bit as 1 when at
-    # least two channels vote for it.
+    """Embed each message bit in keyed frequency pairs in all RGB channels."""
+    # np.unpackbits converts (53) bytes into (424) bits.
+    # Extraction votes across the three RGB channels; two votes decide a bit.
     bits = np.unpackbits(
         np.frombuffer(data, dtype=np.uint8)
     )
@@ -48,6 +49,7 @@ def extract_bytes(
     position_key: bytes,
     dither_key: bytes,
 ) -> bytes:
+    """Recover bits from keyed frequency pairs by voting across RGB channels."""
     bit_count = byte_count * 8
 
     pairs = _coefficient_pairs(
@@ -139,6 +141,7 @@ def _embed_channel(
     pairs: list[tuple[tuple[int, int], tuple[int, int]]],
     dither_key: bytes,
 ) -> np.ndarray:
+    """Encode bits by moving each magnitude difference onto its QIM grid."""
     spectrum = np.fft.rfft2(channel.astype(np.float64))
 
     for index, bit in enumerate(bits):
@@ -193,8 +196,6 @@ def _extract_channel(
     dither_key: bytes,
 ) -> np.ndarray:
     """Extract bits from one colour channel."""
-    #Repeat the same grid construction as used during embedding,
-    #then choose the closer grid for every coefficient pair.
 
     spectrum = np.fft.rfft2(channel.astype(np.float64))
     bits = np.empty(bit_count, dtype=np.uint8)

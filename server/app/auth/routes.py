@@ -1,3 +1,5 @@
+"""Auth blueprint routes"""
+
 import re
 from http import HTTPStatus
 
@@ -15,6 +17,8 @@ _LOGIN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
 @bp.post("/create-user")
 def create_user():
+    """Create new service user"""
+
     # TODO: Validate email
     if not request.is_json:
         return jsonify(
@@ -78,7 +82,9 @@ def create_user():
 
 
 @bp.post("/login")
-def login():
+def login_user():
+    """Login for existing service user"""
+
     # TODO: Add rate limiting for failed login attempts
     if not request.is_json:
         return jsonify(
