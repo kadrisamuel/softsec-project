@@ -50,7 +50,6 @@ METHODS: dict[str, WatermarkingMethod] = {
     AddAfterEOF.name: AddAfterEOF(),
     RGBDFTQIMWatermark.name: RGBDFTQIMWatermark(),
     WatermarkingSoenke.name: WatermarkingSoenke(),
-    # UnsafeBashBridgeAppendEOF.name: UnsafeBashBridgeAppendEOF(),
 }
 
 """Registry of available watermarking methods.
