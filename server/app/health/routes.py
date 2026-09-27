@@ -1,3 +1,5 @@
+"""Health blueprint routes"""
+
 from http import HTTPStatus
 
 from flask import current_app, jsonify
@@ -9,6 +11,8 @@ from . import bp
 
 @bp.get("/healthz")
 def healthz():
+    """Check service and DB connection health"""
+
     try:
         with get_engine().connect() as connection:
             connection.execute(text("SELECT 1"))
