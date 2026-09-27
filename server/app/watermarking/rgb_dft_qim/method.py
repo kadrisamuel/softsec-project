@@ -26,21 +26,21 @@ from ..method import (
 
 
 class RGBDFTQIMWatermark(WatermarkingMethod):
-    """Raster watermark using RGB frequency-domain embedding"""
+    """Add a visible repeated identifier and a hidden RGB watermark to each PDF page."""
 
     name: Final[str] = "rgb-dft-qim-v1"
 
     @staticmethod
     def get_usage() -> str:
         return (
-            "Embeds a 32-character hexadecimal secret into a PDF."
-            "The position parameter will later accept JSON configuration."
+            "Embeds a secret (32 lowercase hexadecimal characters) in every "
+            "PDF page image and adds a visible identifier. "
+            "The position parameter is accepted but ignored."
         )
 
     @staticmethod
     def _validate_secret(secret: str) -> None:
-        """The secret is the information embedded in the PDF and recovered later.
-        Here, it is a 128-bit watermark identifier represented by 32 hex characters"""
+        """Require a 128-bit identifier written as lowercase hexadecimal."""
         if not isinstance(secret, str) or re.fullmatch(
             r"[0-9a-f]{32}", secret
         ) is None:
@@ -50,13 +50,7 @@ class RGBDFTQIMWatermark(WatermarkingMethod):
 
     @staticmethod
     def _validate_key(key: str) -> None:
-        """The key controls where and how the watermark is embedded.
-        It is used to calculate values for:
-        * QIM coefficient positions
-        * Pilot pattern
-        * Bit interleaving
-        * HMAC authentication
-        * Visible mark placement"""
+        """Require a master key for the implemented message and image layers."""
         if not isinstance(key, str) or not key:
             raise ValueError("Key must be a non-empty string")
 

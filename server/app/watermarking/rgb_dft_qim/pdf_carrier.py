@@ -1,3 +1,5 @@
+"""Rasterize PDF pages, embed or extract tile watermarks, and rebuild the PDF."""
+
 from __future__ import annotations
 from PIL import Image
 
@@ -56,7 +58,7 @@ def _render_pages(
 def _render_first_page(
     pdf: bytes,
 ) -> tuple[np.ndarray, float, float]:
-    """Render the first PDF page for single-page operations and tests."""
+    """Return the first page after rendering the entire PDF. Used for testing."""
     return _render_pages(pdf)[0]
 
 
@@ -125,7 +127,7 @@ def _tile_slices(
 def _usable_tile_slices(
     image: np.ndarray,
 ) -> list[tuple[slice, slice]]:
-    """Return tiles containing enough visual variation for reliable QIM."""
+    """Return tiles containing enough pixel variation for reliable QIM."""
     usable_tiles = []
 
     for row_slice, column_slice in _tile_slices(image):
@@ -148,7 +150,7 @@ def _usable_tile_slices(
 def _build_image_pdf_pages(
     pages: list[tuple[np.ndarray, float, float]],
 ) -> bytes:
-    """Rebuild multiple RGB page images as one PDF."""
+    """Build an image-only PDF from RGB pages at their original page sizes."""
     with pymupdf.open() as document:
         for image, page_width, page_height in pages:
             height, width = image.shape[:2]
@@ -190,7 +192,7 @@ def _build_image_pdf(
 def _majority_vote_bytes(
     candidates: list[bytes],
 ) -> bytes:
-    """Recover bytes by selecting the most common value of each bit."""
+    """Vote on each bit; use the first candidate to break a tie."""
     if not candidates:
         raise ValueError("At least one candidate is required")
 
@@ -223,6 +225,7 @@ def embed_bytes_in_pdf(
     visible_text: str | None = None,
     visible_key: bytes | None = None,
 ) -> bytes:
+    """Rasterize each page, mark its usable tiles, and rebuild an image PDF."""
     if (visible_text is None) != (visible_key is None):
         raise ValueError(
             "Visible text and key must be provided together"
@@ -270,7 +273,7 @@ def extract_bytes_from_pdf(
     position_key: bytes,
     dither_key: bytes,
 ) -> bytes:
-    """Extract data by voting across every tile on every page."""
+    """Vote across usable tiles within each page, then across pages."""
     page_candidates = []
 
     for rendered_image, _, _ in _render_pages(pdf):
@@ -301,6 +304,7 @@ def extract_bytes_from_pdf(
 
 
 def is_pdf_compatible(pdf: bytes) -> bool:
+    """Check that the PDF renders and its first page has room for a full tile."""
     try:
         image, _, _ = _render_first_page(pdf)
         _tile_slices(image)

@@ -1,8 +1,6 @@
-"""
-Purpose - Keyed Scrambling:
-* Hide which image locations contain the secret, HMAC, or parity bytes.
-* Make targeted removal harder without the key.
-* Break up the predictable structure of the encoded message.
+"""Reorder encoded bytes using a repeatable, key-dependent permutation.
+
+Frequency coefficient placement is controlled separately by ``dft_qim.py``.
 """
 
 import hmac
