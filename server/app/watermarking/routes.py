@@ -1,4 +1,5 @@
 """Watermarking blueprint routes"""
+# pylint: disable=duplicate-code
 
 import hashlib
 from http import HTTPStatus

@@ -1,4 +1,5 @@
 """Documents blueprint routes"""
+# pylint: disable=duplicate-code
 
 import datetime as dt
 import hashlib
