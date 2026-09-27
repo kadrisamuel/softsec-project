@@ -1,5 +1,5 @@
-"""Encode and decode watermark secrets with authentication, error correction,
-and byte interleaving.
+"""
+Encode and decode watermark secrets with authentication, error correction, and byte interleaving.
 """
 
 from reedsolo import ReedSolomonError, RSCodec
@@ -15,8 +15,8 @@ ENCODED_MESSAGE_BYTES = 53
 
 
 def encode_message(secret: str, master_key: str) -> bytes:
-    """Authenticate the secret, add error correction, and shuffle (interleave)
-    the resulting bytes.
+    """
+    Authenticate the secret, add error correction, and shuffle (interleave) the resulting bytes.
     """
     keys = derive_keys(master_key)
     payload = encode_payload(secret, keys.authentication)
