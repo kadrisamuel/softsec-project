@@ -128,7 +128,7 @@ _TYPE_RE: Final[re.Pattern[bytes]] = re.compile(rb"/Type\s*/([A-Za-z]+)")
 
 
 def _sha1(b: bytes) -> str:
-    return hashlib.sha1(b).hexdigest()
+    return hashlib.sha1(b, usedforsecurity=False).hexdigest()
 
 
 def explore_pdf(pdf: PdfSource) -> dict[str, Any]:
@@ -203,7 +203,7 @@ def explore_pdf(pdf: PdfSource) -> dict[str, Any]:
         return root
     except Exception:  # pylint: disable=broad-exception-caught
         # Fallback: regex-based object scanning (no third-party deps)
-        pass
+        pass  # nosec: B110
 
     # Regex fallback: enumerate uncompressed objects
     children: list[dict[str, Any]] = []

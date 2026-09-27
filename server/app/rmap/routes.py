@@ -39,7 +39,7 @@ def _derive_key(
     """Derives a key for a RMAP requested file encoded as a hex string"""
 
     argon2id = Argon2id(
-        salt=Random(expected_link.encode()).randbytes(16),
+        salt=Random(expected_link.encode()).randbytes(16),  # nosec: B311
         length=32,
         iterations=1,
         lanes=4,

@@ -122,7 +122,7 @@ def login_user():
     return jsonify(
         {
             "token": token,
-            "token_type": "bearer",
+            "token_type": "bearer",  # nosec: 105
             "expires_in": current_app.config["TOKEN_TTL_SECONDS"],
         }
     ), HTTPStatus.OK
