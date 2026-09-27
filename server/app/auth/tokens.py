@@ -1,3 +1,5 @@
+"""Auth token functions"""
+
 from functools import wraps
 
 from flask import current_app, g, jsonify, request
@@ -5,6 +7,8 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 
 def _serializer() -> URLSafeTimedSerializer:
+    """Initialize serializer with key and salt"""
+
     return URLSafeTimedSerializer(
         current_app.config["SECRET_KEY"],
         salt=current_app.config["SALT"],
@@ -12,15 +16,19 @@ def _serializer() -> URLSafeTimedSerializer:
 
 
 def create_token(user_id: int, login: str, email: str) -> str:
+    """Create token from user, login, and email"""
+
     # TODO: Evaluate token revocation and signing key rotation
-    return _serializer().dumps(
-        {"uid": user_id, "login": login, "email": email}
-    )
+    return _serializer().dumps({"uid": user_id, "login": login, "email": email})
 
 
 def require_auth(view):
+    """View for authentication enforcement"""
+
     @wraps(view)
     def wrapper(*args, **kwargs):
+        """Verify token validity"""
+
         # TODO: Parse the auth scheme case-insensitively and reject
         # malformed headers
         auth = request.headers.get("Authorization", "")
