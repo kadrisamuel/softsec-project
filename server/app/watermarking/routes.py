@@ -5,7 +5,7 @@ import hashlib
 from http import HTTPStatus
 from pathlib import Path
 
-from flask import current_app, jsonify, request
+from flask import current_app, g, jsonify, request
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
@@ -57,17 +57,16 @@ def create_watermark(document_id: int | None = None):
 
     try:
         with get_engine().connect() as connection:
-            # TODO: Enforce document ownership in this query
             row = connection.execute(
                 text(
                     """
                     SELECT id, name, path
                     FROM Documents
-                    WHERE id = :id
+                    WHERE id = :id AND ownerid = :uid
                     LIMIT 1
                     """
                 ),
-                {"id": document_id},
+                {"id": document_id, "uid": int(g.user["id"])},
             ).first()
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error during watermark creation")
@@ -267,16 +266,15 @@ def read_watermark(document_id: int | None = None):
 
     try:
         with get_engine().connect() as connection:
-            # TODO: Enforce document ownership in this query
             row = connection.execute(
                 text(
                     """
                     SELECT id, name, path
                     FROM Documents
-                    WHERE id = :id
+                    WHERE id = :id AND ownerid = :uid
                     """
                 ),
-                {"id": document_id},
+                {"id": document_id, "uid": int(g.user["id"])},
             ).first()
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
