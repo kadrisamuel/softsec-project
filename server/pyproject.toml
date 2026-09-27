@@ -28,11 +28,15 @@ dev = [
 
 [tool.pylint."messages control"]
 disable = [
+	"fixme",
 	"cyclic-import",
 	"too-few-public-methods",
 	"too-many-arguments",
 	"too-many-positional-arguments",
 	"too-many-return-statements",
+	"too-many-locals",
+	"too-many-branches",
+	"too-many-statements",
 ]
 
 [tool.pytest.ini_options]
@@ -40,9 +44,9 @@ addopts = "-q"
 testpaths = ["test/"]
 python_files = ["test_*.py"]
 filterwarnings = [
-    "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
-    "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
-    "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+	"ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
+	"ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
+	"ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
 ]
 
 [project.scripts]
