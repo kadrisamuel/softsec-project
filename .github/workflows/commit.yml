@@ -63,7 +63,7 @@ jobs:
         run: pip install -e server[dev]
 
       - name: Run Bandit
-        run: bandit -r app
+        run: bandit -c pyproject.toml -r app
         working-directory: ./server
 
   # Pytest

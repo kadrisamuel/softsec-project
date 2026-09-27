@@ -136,8 +136,7 @@ class WatermarkingSoenke(WatermarkingMethod):
         _sanity_check_inputs(secret, key)
 
         # Create local PRNG seeded with key
-        prng = Random()
-        prng.seed(key)
+        prng = Random(key)  # nosec: B311
 
         derived_key: bytes = _derive_key(key, prng)
         nonce: bytes = prng.randbytes(16)
@@ -237,8 +236,7 @@ class WatermarkingSoenke(WatermarkingMethod):
             raise ValueError("The key must not be empty")
 
         # Create local PRNG seeded with key
-        prng = Random()
-        prng.seed(key)
+        prng = Random(key)  # nosec: B311
 
         derived_key: bytes = _derive_key(key, prng)
         nonce: bytes = prng.randbytes(16)

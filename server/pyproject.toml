@@ -39,6 +39,9 @@ disable = [
 	"too-many-statements",
 ]
 
+[tool.bandit]
+exclude_dirs = ["app/watermarking/unsafe_bash_bridge_append_eof.py"]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["test/"]

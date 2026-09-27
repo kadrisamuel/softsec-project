@@ -161,7 +161,7 @@ def create_watermark(document_id: int | None = None):
             {"error": "failed to write watermarked file"}
         ), HTTPStatus.INTERNAL_SERVER_ERROR
 
-    link = hashlib.sha1(filename.encode("utf-8")).hexdigest()
+    link = hashlib.sha256(filename.encode("utf-8")).hexdigest()
     try:
         with get_engine().begin() as connection:
             connection.execute(
