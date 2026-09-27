@@ -166,7 +166,7 @@ def explore_pdf(pdf: PdfSource) -> dict[str, Any]:
     }
 
     try:
-        import fitz  # type: ignore
+        import fitz  # type: ignore pylint: disable=import-outside-toplevel
 
         doc = fitz.open(stream=data, filetype="pdf")
         # Pages as first-class nodes

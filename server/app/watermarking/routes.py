@@ -1,3 +1,5 @@
+"""Watermarking blueprint routes"""
+
 import hashlib
 from http import HTTPStatus
 from pathlib import Path
@@ -17,14 +19,15 @@ from .method import WatermarkingError
 @bp.post("/create-watermark/<int:document_id>")
 @require_auth
 def create_watermark(document_id: int | None = None):
-    if not document_id:
-        document_id = (
-            request.args.get("id")
-            or request.args.get("documentid")
-            or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
-        )
+    """Watermark document owned by user"""
+
     try:
-        document_id = document_id
+        if not document_id:
+            document_id = (
+                request.args.get("id")
+                or request.args.get("documentid")
+                or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
+            )
     except (TypeError, ValueError):
         return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
@@ -197,7 +200,7 @@ def create_watermark(document_id: int | None = None):
                 destination_path,
             )
         return jsonify(
-            {"error": f"database error during version insert"}
+            {"error": "database error during version insert"}
         ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     return jsonify(
@@ -216,6 +219,8 @@ def create_watermark(document_id: int | None = None):
 
 @bp.get("/get-watermarking-methods")
 def get_watermarking_methods():
+    """Return available watermarking methods"""
+
     methods = []
     for method in watermarking_utils.METHODS:
         methods.append(
@@ -231,14 +236,15 @@ def get_watermarking_methods():
 @bp.post("/read-watermark/<int:document_id>")
 @require_auth
 def read_watermark(document_id: int | None = None):
-    if not document_id:
-        document_id = (
-            request.args.get("id")
-            or request.args.get("documentid")
-            or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
-        )
+    """Extract secret from document owned by user"""
+
     try:
-        document_id = document_id
+        if not document_id:
+            document_id = (
+                request.args.get("id")
+                or request.args.get("documentid")
+                or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
+            )
     except (TypeError, ValueError):
         return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
