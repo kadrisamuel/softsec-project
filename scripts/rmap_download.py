@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Request and download a recipient-specific PDF through RMAP."""
+"""CLI client to request and download watermarked PDF
+using RMAP from specific group's server."""
 
 from __future__ import annotations
 
@@ -23,16 +24,24 @@ PDF_DOWNLOAD_PATH = "/api/get-version"
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line options for the RMAP download."""
     parser = argparse.ArgumentParser(
         description="Request and download a watermarked PDF through RMAP."
     )
-    parser.add_argument("--url", required=True, help="Target server base URL.")
+    parser.add_argument(
+        "--url",
+        required=True,
+        help="Target server base URL, for example http://softsec-group-01.dsv.local.su.se:5000"
+    )
     parser.add_argument(
         "--target-group",
         required=True,
         help="Target group name, for example Group_03.",
     )
-    parser.add_argument("--identity", default="Group_02")
+    parser.add_argument(
+        "--identity",
+        default="Group_02"
+    )
     parser.add_argument(
         "--client-private-key",
         type=Path,
@@ -53,12 +62,20 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_OUTPUT_DIRECTORY,
     )
-    parser.add_argument("--timeout", type=float, default=120.0)
-    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=120.0
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true"
+    )
     return parser.parse_args()
 
 
 def resolve_server_public_key(args: argparse.Namespace) -> Path:
+    """Find and validate the target group's public key."""
     if not re.fullmatch(r"Group_\d{2}", args.target_group):
         raise ValueError(
             "Target group must use the form Group_03."
@@ -78,6 +95,7 @@ def resolve_server_public_key(args: argparse.Namespace) -> Path:
 
 
 def read_client_passphrase(private_key_path: Path) -> str | None:
+    """Prompt if the client private key is password-protected."""
     if not private_key_path.is_file():
         raise FileNotFoundError(
             f"Client private key not found: {private_key_path}"
@@ -99,12 +117,15 @@ def post_rmap_message(
     payload: dict,
     timeout: float,
 ) -> dict:
+    """POST an RMAP message and return its JSON response."""
     response = session.post(
         url,
         json=payload,
         timeout=timeout,
         allow_redirects=False,
     )
+    if 300 <= response.status_code < 400:
+        raise RuntimeError("The RMAP endpoint returned a redirect.")
     response.raise_for_status()
 
     data = response.json()
@@ -119,6 +140,7 @@ def request_download_link(
     server_public_key: Path,
     passphrase: str | None,
 ) -> str:
+    """Complete RMAP handshake and return the verified link token."""
     client = RMAPClient(
         identity=args.identity,
         client_private_key_path=args.client_private_key,
@@ -166,6 +188,7 @@ MAX_PDF_BYTES = 100 * 1024 * 1024  # 100 MiB
 
 
 def download_pdf(args: argparse.Namespace, link: str) -> Path:
+    """Download and save the PDF under its RMAP link without replacing an existing download."""
     url = f"{args.url.rstrip('/')}{PDF_DOWNLOAD_PATH}/{link}"
     destination = args.output_directory / f"{link}.pdf"
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -207,13 +230,16 @@ def download_pdf(args: argparse.Namespace, link: str) -> Path:
 
 
 def main() -> int:
+    """Run the handshake, download and report the saved PDF path."""
     args = parse_args()
 
     try:
         server_public_key = resolve_server_public_key(args)
         passphrase = read_client_passphrase(args.client_private_key)
         link = request_download_link(
-            args, server_public_key, passphrase
+            args,
+            server_public_key,
+            passphrase
         )
         saved_pdf = download_pdf(args, link)
     except (RMAPError, requests.RequestException, OSError, ValueError, RuntimeError) as exc:
