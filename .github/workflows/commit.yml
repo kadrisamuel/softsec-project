@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -e server[dev]
+        run: pip install -r server/requirements-dev.txt
 
       - name: Run Pylint
         run: pylint --output-format=github app
@@ -41,7 +41,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -e server[dev]
+        run: pip install -r server/requirements-dev.txt
 
       - name: Run Pyright
         run: pyright app
@@ -60,10 +60,29 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -e server[dev]
+        run: pip install -r server/requirements-dev.txt
 
       - name: Run Bandit
         run: bandit -c pyproject.toml -r app
+        working-directory: ./server
+
+  # deptry
+  dep-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r server/requirements-dev.txt
+
+      - name: Run deptry
+        run: deptry -go .
         working-directory: ./server
 
   # Pytest
@@ -79,7 +98,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -e server[dev]
+        run: pip install -r server/requirements-dev.txt
 
       - name: Run Pytest
         run: pytest .

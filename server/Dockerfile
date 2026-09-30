@@ -10,9 +10,9 @@ WORKDIR /app
 COPY keys/Public-keys-20260914/*.asc /app/pub-keys/
 
 # Copy the package and install runtime dependencies
-COPY pyproject.toml /app/pyproject.toml
+COPY requirements.txt /app/requirements.txt
 COPY app /app/app
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY entrypoint.py /app/entrypoint.py
 
