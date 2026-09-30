@@ -118,6 +118,14 @@ def post_rmap_message(
         timeout=timeout,
         allow_redirects=False,
     )
+    sent = response.request
+    body = sent.body.decode("utf-8") if isinstance(sent.body, bytes) else sent.body
+
+    print(f"REQUEST {sent.method} {sent.url}")
+    print(body)
+    print(f"RESPONSE HTTP {response.status_code}")
+    print(response.text)
+
     if 300 <= response.status_code < 400:
         raise RuntimeError("The RMAP endpoint returned a redirect.")
     if not allow_error:
@@ -192,7 +200,7 @@ def main() -> int:
     try:
         server_public_key = resolve_server_public_key(args)
         passphrase = read_client_passphrase(args.client_private_key)
-        replay_response = do_handshake(
+        _replay_response = do_handshake(
             args,
             server_public_key,
             passphrase
@@ -202,8 +210,8 @@ def main() -> int:
         print(f"RMAP replay check failed: {exc}", file=sys.stderr)
         return 1
 
-    print(f"Replay HTTP status: {replay_response.status_code}")
-    print(f"Replay response: {replay_response.text}")
+    # print(f"Replay HTTP status: {replay_response.status_code}")
+    # print(f"Replay response: {replay_response.text}")
     return 0
 
 
