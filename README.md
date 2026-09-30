@@ -26,7 +26,7 @@ python3 -m venv .venv
 . .venv/bin/activate
 
 # Install the necessary dependencies
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements-dev.txt
 
 # Run the unit tests
 python -m pytest
