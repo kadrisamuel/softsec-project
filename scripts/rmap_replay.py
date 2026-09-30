@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Replay a completed RMAP handshake against the group's own deployment."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
