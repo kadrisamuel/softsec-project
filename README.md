@@ -40,7 +40,7 @@ From the root of the directory:
 # Create a file to set environement variables like passwords.
 cp sample.env .env
 
-# Edit .env and pick the passwords you want
+# Edit .env and set unique passwords, SECRET_KEY, and SALT
 
 # Rebuild the docker image and deploy the containers
 docker compose up --build -d
