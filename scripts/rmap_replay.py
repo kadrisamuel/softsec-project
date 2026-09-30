@@ -151,27 +151,35 @@ def do_handshake(
     base_url = args.url.rstrip("/")
 
     with requests.Session() as session:
+        payload1 = client.build_msg1()
         response1 = post_rmap_message(
             session,
             base_url + RMAP_INITIATE_PATH,
-            client.build_msg1(),
+            payload1,
             args.timeout,
+        )
+        replay_response1 = post_rmap_message(
+            session,
+            base_url + RMAP_GET_LINK_PATH,
+            payload1,
+            args.timeout,
+            allow_error=True,
         )
         client.process_resp1(response1.json())
 
-        payload = client.build_msg2()
+        payload2 = client.build_msg2()
         response2 = post_rmap_message(
             session,
             base_url + RMAP_GET_LINK_PATH,
-            payload,
+            payload2,
             args.timeout,
         )
         returned_link = client.process_resp2(response2.json())
 
-        replay_response = post_rmap_message(
+        replay_response2 = post_rmap_message(
             session,
             base_url + RMAP_GET_LINK_PATH,
-            payload,
+            payload2,
             args.timeout,
             allow_error=True,
         )
@@ -189,7 +197,7 @@ def do_handshake(
     if not re.fullmatch(r"[0-9a-fA-F]{32}", expected_link):
         raise RuntimeError("RMAP link is not a 32-character hexadecimal value.")
 
-    return replay_response
+    return replay_response1, replay_response2
 
 
 
