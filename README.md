@@ -69,3 +69,12 @@ docker context create softsec-vm --docker "host=ssh://softsec@softsec-group-02.d
 # Build and deploy container on VM
 docker compose up --context softsec-vm --build -d
 ```
+
+### Updating dependencies
+Besides our dependency definitions inside `pyproject.toml`, we also keep track of all transitive dependencies using generated `requirements.txt` and `requirements-dev.txt` files.
+To update dependencies, follow the following steps:
+1. Add, change, or remove dependencies in `pyproject.toml`
+2. Run `pip-compile --strip-extras pyproject.toml` to create updated `requirements.txt`
+3. Run `pip-compile --extra dev -o requirements-dev.txt pyproject.toml` to create updated `requirements-dev.txt`
+4. Run `pip install -r requirements(-dev).txt` to install the most recent (dev-)dependencies
+5. Commit all altered files

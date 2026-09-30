@@ -5,26 +5,26 @@ on:
     - cron: "0 0,6,12 * * *"
   push:
     paths:
-      - 'server/pyproject.toml'
+      - 'server/requirements.txt'
   pull_request:
     paths:
-      - 'server/pyproject.toml'
+      - 'server/requirements.txt'
 
 jobs:
-    pyscan:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Check out repository
-          uses: actions/checkout@v4
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-        - name: Set up Python
-          uses: actions/setup-python@v7
-          with:
-            python-version: '3.12'
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
 
-        - name: Install dependencies
-          run: pip install -e server[dev]
+      - name: Install dependencies
+        run: pip install -r server/requirements-dev.txt
 
-        - name: Run pyscan
-          run: pyscan -d .
-          working-directory: ./server
+      - name: Run pip-audit
+        run: pip-audit -r requirements.txt --no-deps --disable-pip
+        working-directory: ./server
