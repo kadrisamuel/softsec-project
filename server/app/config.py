@@ -4,17 +4,21 @@ import os
 from pathlib import Path
 
 
-def _read_secret(secret_file_env: str, default: str) -> str:
-    """Read docker secret from path"""
+def _read_secret(secret_file_env: str) -> str:
+    """Read a required secret, failing startup if it is unavailable."""
 
-    if secret_file_env not in os.environ:
-        return default
+    secret_path = os.environ.get(secret_file_env)
+    if not secret_path:
+        raise RuntimeError(f"{secret_file_env} must point to a secret file")
 
     try:
-        with open(os.environ[secret_file_env], encoding="utf8") as secret:
-            return secret.read().strip()
-    except Exception:  # pylint: disable=broad-exception-caught
-        return default
+        secret = Path(secret_path).read_text(encoding="utf8").strip()
+    except OSError as exc:
+        raise RuntimeError(f"Cannot read secret file from {secret_file_env}") from exc
+
+    if not secret:
+        raise RuntimeError(f"Secret file from {secret_file_env} is empty")
+    return secret
 
 
 class Config:  # pylint: disable=too-few-public-methods
@@ -23,13 +27,10 @@ class Config:  # pylint: disable=too-few-public-methods
     STORAGE_DIR = Path(os.environ.get("STORAGE_DIR", "./storage")).resolve()
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    SECRET_KEY = _read_secret("SECRET_KEY_FILE", "test-secret")
-    SALT = _read_secret("SALT_FILE", "test-salt")
     TOKEN_TTL_SECONDS = int(os.environ.get("TOKEN_TTL_SECONDS", "86400"))
 
     # ---------- DB config ----------
     DB_USER = os.environ.get("DB_USER", "tatou")
-    DB_PASSWORD = _read_secret("DB_PASS_FILE", "tatou")
     DB_HOST = os.environ.get("DB_HOST", "db")
     DB_PORT = int(os.environ.get("DB_PORT", "3306"))
     DB_NAME = os.environ.get("DB_NAME", "tatou")
@@ -65,3 +66,13 @@ class Config:  # pylint: disable=too-few-public-methods
         "RMAP_SOURCE_DOCUMENT_NAME",
         "Group_2.pdf",
     )
+
+    @staticmethod
+    def init_app(app):
+        """Load required secrets when the application starts."""
+
+        app.config.update(
+            SECRET_KEY=_read_secret("SECRET_KEY_FILE"),
+            SALT=_read_secret("SALT_FILE"),
+            DB_PASSWORD=_read_secret("DB_PASS_FILE"),
+        )

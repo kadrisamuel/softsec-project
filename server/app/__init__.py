@@ -17,6 +17,8 @@ def create_app(config_class=Config):
 
     # --- Config ---
     app.config.from_object(config_class)
+    if hasattr(config_class, "init_app"):
+        config_class.init_app(app)
 
     db.init_app(app)
 
