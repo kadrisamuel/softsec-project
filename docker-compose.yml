@@ -77,7 +77,7 @@ services:
       - db-data:/var/lib/mysql
       - ./db/tatou.sql:/docker-entrypoint-initdb.d/10-tatou.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root --password=$(cat /run/secrets/db_root_pass) --silent"]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 5s
       retries: 5
