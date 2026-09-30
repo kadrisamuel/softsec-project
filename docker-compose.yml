@@ -10,6 +10,15 @@ services:
     ports:
       - "${APP_PORT:-5000}:5000"
     secrets:
+      - source: secret_key
+        uid: "1000"
+        gid: "1000"
+      - source: salt
+        uid: "1000"
+        gid: "1000"
+      - source: db_pass
+        uid: "1000"
+        gid: "1000"
       - source: private_key
         uid: "1000"
         gid: "1000"
@@ -31,21 +40,23 @@ services:
       - DB_PORT=3306
       - DB_NAME=tatou
       - DB_USER=${MARIADB_USER}
-      - DB_PASSWORD=${MARIADB_PASSWORD}
-      - SECRET_KEY=${SECRET_KEY}
-      - SALT=${SALT}
+      - DB_PASS_FILE=/run/secrets/db_pass
+      - SECRET_KEY_FILE=/run/secrets/secret_key
+      - SALT_FILE=/run/secrets/salt
       - ENABLE_MAIN_ROUTES=${ENABLE_MAIN_ROUTES:-false}
       - ENABLE_AUTH_ROUTES=${ENABLE_AUTH_ROUTES:-false}
       - ENABLE_DOCUMENT_ROUTES=${ENABLE_DOCUMENT_ROUTES:-false}
       - ENABLE_WATERMARKING_ROUTES=${ENABLE_WATERMARKING_ROUTES:-false}
       - ENABLE_RMAP_ROUTES=${ENABLE_RMAP_ROUTES:-false}
       - RMAP_SERVER_PUBLIC_KEY_PATH
-      - RMAP_SERVER_PRIVATE_KEY_PATH
-      - RMAP_SERVER_PRIVATE_KEY_PASS_FILE
+      - RMAP_SERVER_PRIVATE_KEY_PATH=/run/secrets/private_key
+      - RMAP_SERVER_PRIVATE_KEY_PASS_FILE=/run/secrets/private_key_pass
       - RMAP_CLIENT_KEYS_DIR
       - RMAP_WATERMARK_METHOD
       - RMAP_LINK_PREFIX
-      - RMAP_WATERMARKING_KEY_PATH
+      - RMAP_WATERMARKING_KEY_PATH=/run/secrets/watermarking_key
+      - RMAP_SOURCE_PDF_PATH=/run/secrets/group_pdf
+      - RMAP_SOURCE_DOCUMENT_NAME
     depends_on:
       db:
         condition: service_healthy
@@ -54,16 +65,19 @@ services:
   db:
     image: mariadb:12.3
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    secrets:
+      - db_root_pass
+      - db_pass
     environment:
-      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/db_root_pass
       - MARIADB_DATABASE=tatou
       - MARIADB_USER=${MARIADB_USER}
-      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+      - MARIADB_PASSWORD_FILE=/run/secrets/db_pass
     volumes:
       - db-data:/var/lib/mysql
       - ./db/tatou.sql:/docker-entrypoint-initdb.d/10-tatou.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root --password=$MARIADB_ROOT_PASSWORD --silent"]
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root --password=$(cat /run/secrets/db_root_pass) --silent"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,6 +88,14 @@ volumes:
   user-files:
 
 secrets:
+  secret_key:
+    environment: SECRET_KEY
+  salt:
+    environment: SALT
+  db_root_pass:
+    environment: MARIADB_ROOT_PASSWORD
+  db_pass:
+    environment: MARIADB_PASSWORD
   private_key:
     file: private.key
   private_key_pass:
