@@ -5,10 +5,14 @@ on:
     - cron: "0 0,6,12 * * *"
   push:
     paths:
-      - 'server/requirements.txt'
+      - "server/requirements.txt"
+      - "server/Dockerfile"
+      - "docker-compose.yml"
   pull_request:
     paths:
-      - 'server/requirements.txt'
+      - "server/requirements.txt"
+      - "server/Dockerfile"
+      - "docker-compose.yml"
 
 jobs:
   pip-audit:
@@ -20,7 +24,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install dependencies
         run: pip install -r server/requirements-dev.txt
@@ -28,3 +32,23 @@ jobs:
       - name: Run pip-audit
         run: pip-audit -r requirements.txt --no-deps --disable-pip
         working-directory: ./server
+
+  grype:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Scan server SBOM
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: "./sboms/server.cdx.json"
+          output-format: table
+          fail-build: false
+
+      - name: Scan database SBOM
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: "./sboms/db.cdx.json"
+          output-format: table
+          fail-build: false
