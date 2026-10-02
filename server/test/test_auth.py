@@ -1,12 +1,11 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from app import create_app
+from app.auth.tokens import create_token, require_auth
 from flask import g
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
-
-from app import create_app
-from app.auth.tokens import create_token, require_auth
 
 
 def test_auth_blueprint_is_registered():
@@ -15,23 +14,32 @@ def test_auth_blueprint_is_registered():
     assert "auth" in app.blueprints
 
 
+def test_create_user_unsupported_media():
+    response = create_app().test_client().post("/api/create-user", data="test")
+
+    assert response.status_code == 415
+    assert response.json == {"error": "Content-Type must be application/json"}
+
+
 def test_create_user_preserves_missing_fields_response():
     response = create_app().test_client().post("/api/create-user", json={})
 
     assert response.status_code == 400
-    assert response.json == {
-        "error": "email, login, and password are required"
-    }
+    assert response.json == {"error": "email, login, and password are required"}
 
 
 def test_create_user_rejects_login_with_path_separator():
-    response = create_app().test_client().post(
-        "/api/create-user",
-        json={
-            "email": "user@example.com",
-            "login": "../plugins",
-            "password": "test-password",
-        },
+    response = (
+        create_app()
+        .test_client()
+        .post(
+            "/api/create-user",
+            json={
+                "email": "user@example.com",
+                "login": "../plugins",
+                "password": "test-password",
+            },
+        )
     )
 
     assert response.status_code == 400
@@ -41,6 +49,42 @@ def test_create_user_rejects_login_with_path_separator():
             "periods, underscores, or hyphens"
         )
     }
+
+
+def test_create_user_rejects_invalid_email():
+    response = (
+        create_app()
+        .test_client()
+        .post(
+            "/api/create-user",
+            json={
+                "email": "user@example",
+                "login": "alice",
+                "password": "test-password",
+            },
+        )
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "email is malformed"}
+
+
+def test_create_user_password_oob():
+    response = (
+        create_app()
+        .test_client()
+        .post(
+            "/api/create-user",
+            json={
+                "email": "user@example.com",
+                "login": "alice",
+                "password": "short",
+            },
+        )
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "password must be between 8-64 characters long"}
 
 
 def test_create_user_creates_user():
@@ -104,11 +148,40 @@ def test_create_token_preserves_authentication_payload():
     }
 
 
+def test_login_unsupported_media():
+    response = create_app().test_client().post("/api/login", data="test")
+
+    assert response.status_code == 415
+    assert response.json == {"error": "Content-Type must be application/json"}
+
+
 def test_login_preserves_missing_fields_response():
     response = create_app().test_client().post("/api/login", json={})
 
     assert response.status_code == 400
     assert response.json == {"error": "email and password are required"}
+
+
+def test_login_invalid_email():
+    response = (
+        create_app()
+        .test_client()
+        .post("/api/login", json={"email": "user@example", "password": "test-password"})
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "email is malformed"}
+
+
+def test_login_password_oob():
+    response = (
+        create_app()
+        .test_client()
+        .post("/api/login", json={"email": "user@example.com", "password": "short"})
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "password must be between 8-64 characters long"}
 
 
 def test_login_returns_token_for_valid_credentials():
@@ -170,9 +243,7 @@ def test_require_auth_rejects_missing_token():
     response = app.test_client().get("/protected-test-route")
 
     assert response.status_code == 401
-    assert response.json == {
-        "error": "Missing or invalid Authorization header"
-    }
+    assert response.json == {"error": "Missing or invalid Authorization header"}
 
 
 def test_require_auth_rejects_invalid_token():
