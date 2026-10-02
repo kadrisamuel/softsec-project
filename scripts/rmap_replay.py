@@ -7,6 +7,7 @@ from __future__ import annotations
 import sys
 import argparse
 from pathlib import Path
+from copy import copy
 
 import getpass
 import re
@@ -139,7 +140,7 @@ def do_handshake(
     server_public_key: Path,
     passphrase: str | None,
 ) -> requests.Response:
-    """Complete a handshake, then return the response to an identical msg2."""
+    """Complete a handshake, replay various parts"""
     client = RMAPClient(
         identity=args.identity,
         client_private_key_path=args.client_private_key,
@@ -161,16 +162,35 @@ def do_handshake(
             args.timeout,
         )
 
-        print("Replay request 1 and see response: ")
-        replay_response1 = post_rmap_message(
+        # Meaningless because server accepts all nonces at this stage
+        # Enc_ServerPublicKey({identity, nonceClient})
+        # print("Replay request 1 and see response: ")
+        # replay_response1 = post_rmap_message(
+        #     session,
+        #     base_url + RMAP_GET_LINK_PATH,
+        #     payload1,
+        #     args.timeout,
+        #     allow_error=True,
+        # )
+        client.process_resp1(response1.json())
+
+        # Build a request with invalid nonce
+        # to check if it invalidates the session/challenge
+        print("Invalid request with arbitrary server Nonce and response 2: ")
+        fake_client = copy(client)
+        correct_nonce = client.nonceServer
+        fake_client.nonceServer = correct_nonce ^ 1
+        invalid_payload2 = fake_client.build_msg2()
+        invalid_response2 = post_rmap_message(
             session,
             base_url + RMAP_GET_LINK_PATH,
-            payload1,
+            invalid_payload2,
             args.timeout,
             allow_error=True,
         )
-        client.process_resp1(response1.json())
 
+        print(f"Correct server nonce: 0x{correct_nonce:016x}")
+        assert client.nonceServer == correct_nonce
         payload2 = client.build_msg2()
         print("Valid request and response 2: ")
         response2 = post_rmap_message(
@@ -190,40 +210,40 @@ def do_handshake(
             allow_error=True,
         )
 
-        # Replay all messages
-        print("Replay both request 1&2 and see responses: ")
-        r_response1 = post_rmap_message(
-            session,
-            base_url + RMAP_INITIATE_PATH,
-            payload1,
-            args.timeout,
-            allow_error=True,
-        )
-        r_response2 = post_rmap_message(
-            session,
-            base_url + RMAP_GET_LINK_PATH,
-            payload2,
-            args.timeout,
-            allow_error=True,
-        )
+        # # Replay all messages
+        # print("Replay both request 1&2 and see responses: ")
+        # r_response1 = post_rmap_message(
+        #     session,
+        #     base_url + RMAP_INITIATE_PATH,
+        #     payload1,
+        #     args.timeout,
+        #     allow_error=True,
+        # )
+        # r_response2 = post_rmap_message(
+        #     session,
+        #     base_url + RMAP_GET_LINK_PATH,
+        #     payload2,
+        #     args.timeout,
+        #     allow_error=True,
+        # )
 
-    # Replay all messages
-    print("Start a new session and replay both request 1&2 from last session and see responses: ")
-    with requests.Session() as session:
-        _sr_response1 = post_rmap_message(
-            session,
-            base_url + RMAP_INITIATE_PATH,
-            payload1,
-            args.timeout,
-            allow_error=True,
-        )
-        _sr_response2 = post_rmap_message(
-            session,
-            base_url + RMAP_GET_LINK_PATH,
-            payload2,
-            args.timeout,
-            allow_error=True,
-        )
+    # # Replay all messages in a new session
+    # print("Start a new session and replay both request 1&2 from last session and see responses: ")
+    # with requests.Session() as session:
+    #     _sr_response1 = post_rmap_message(
+    #         session,
+    #         base_url + RMAP_INITIATE_PATH,
+    #         payload1,
+    #         args.timeout,
+    #         allow_error=True,
+    #     )
+    #     _sr_response2 = post_rmap_message(
+    #         session,
+    #         base_url + RMAP_GET_LINK_PATH,
+    #         payload2,
+    #         args.timeout,
+    #         allow_error=True,
+    #     )
 
     expected_link = client.expected_link
     if expected_link is None:
@@ -238,7 +258,7 @@ def do_handshake(
     if not re.fullmatch(r"[0-9a-fA-F]{32}", expected_link):
         raise RuntimeError("RMAP link is not a 32-character hexadecimal value.")
 
-    return r_response1, r_response2
+    return returned_link
 
 
 
@@ -250,7 +270,7 @@ def main() -> int:
     try:
         server_public_key = resolve_server_public_key(args)
         passphrase = read_client_passphrase(args.client_private_key)
-        _replay_response = do_handshake(
+        response_link = do_handshake(
             args,
             server_public_key,
             passphrase
@@ -262,6 +282,7 @@ def main() -> int:
 
     # print(f"Replay HTTP status: {replay_response.status_code}")
     # print(f"Replay response: {replay_response.text}")
+    print(f"Reponse link: {response_link}")
     return 0
 
 
