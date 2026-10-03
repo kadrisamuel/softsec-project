@@ -57,6 +57,35 @@ class LoginModel(BaseModel):
         return value
 
 
+def validation_error_message(error: ValidationError, required_message: str) -> str:
+    """Choose an error message in missing, login, password, email order."""
+    errors = error.errors()
+    if any(e["type"] == "missing" for e in errors):
+        return required_message
+
+    if any(
+        "login" in e["loc"]
+        and e["type"] in {"string_too_long", "string_too_short", "string_pattern_mismatch"}
+        for e in errors
+    ):
+        return (
+            "login must be 1-64 characters using letters, numbers, "
+            "periods, underscores, or hyphens"
+        )
+
+    if any(
+        "password" in e["loc"]
+        and e["type"] in {"string_too_long", "string_too_short"}
+        for e in errors
+    ):
+        return "password must be between 8-64 characters long"
+
+    if any("email" in e["loc"] and e["type"] == "value_error" for e in errors):
+        return "email is malformed"
+
+    return "Request body is malformed"
+
+
 @bp.post("/create-user")
 def create_user():
     """Create new service user"""
@@ -76,41 +105,10 @@ def create_user():
     try:
         validated_data = CreateUserModel.model_validate(payload)
     except ValidationError as val_err:
-        if any(e["type"] == "missing" for e in val_err.errors()):
-            return jsonify(
-                {"error": "email, login, and password are required"}
-            ), HTTPStatus.BAD_REQUEST
-
-        if any(
-            "login" in e["loc"]
-            and e["type"]
-            in ["string_too_long", "string_too_short", "string_pattern_mismatch"]
-            for e in val_err.errors()
-        ):
-            return jsonify(
-                {
-                    "error": (
-                        "login must be 1-64 characters using letters, numbers, "
-                        "periods, underscores, or hyphens"
-                    )
-                }
-            ), HTTPStatus.BAD_REQUEST
-
-        if any(
-            "password" in e["loc"]
-            and e["type"] in ["string_too_long", "string_too_short"]
-            for e in val_err.errors()
-        ):
-            return jsonify(
-                {"error": "password must be between 8-64 characters long"}
-            ), HTTPStatus.BAD_REQUEST
-
-        if any(
-            "email" in e["loc"] and e["type"] == "value_error" for e in val_err.errors()
-        ):
-            return jsonify({"error": "email is malformed"}), HTTPStatus.BAD_REQUEST
-
-        return jsonify({"error": "Request body is malformed"}), HTTPStatus.BAD_REQUEST
+        message = validation_error_message(
+            val_err, "email, login, and password are required"
+        )
+        return jsonify({"error": message}), HTTPStatus.BAD_REQUEST
 
     password_hash = generate_password_hash(validated_data.password)
 
@@ -164,26 +162,8 @@ def login_user():
     try:
         validated_data = LoginModel.model_validate(payload)
     except ValidationError as val_err:
-        if any(e["type"] == "missing" for e in val_err.errors()):
-            return jsonify(
-                {"error": "email and password are required"}
-            ), HTTPStatus.BAD_REQUEST
-
-        if any(
-            "password" in e["loc"]
-            and e["type"] in ["string_too_long", "string_too_short"]
-            for e in val_err.errors()
-        ):
-            return jsonify(
-                {"error": "password must be between 8-64 characters long"}
-            ), HTTPStatus.BAD_REQUEST
-
-        if any(
-            "email" in e["loc"] and e["type"] == "value_error" for e in val_err.errors()
-        ):
-            return jsonify({"error": "email is malformed"}), HTTPStatus.BAD_REQUEST
-
-        return jsonify({"error": "Request body is malformed"}), HTTPStatus.BAD_REQUEST
+        message = validation_error_message(val_err, "email and password are required")
+        return jsonify({"error": message}), HTTPStatus.BAD_REQUEST
 
     try:
         with get_engine().connect() as connection:

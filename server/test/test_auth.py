@@ -30,6 +30,44 @@ def test_create_user_preserves_missing_fields_response():
     assert response.json == {"error": "email, login, and password are required"}
 
 
+@pytest.mark.parametrize(
+    "endpoint, payload, expected_message",
+    [
+        (
+            "/api/create-user",
+            {"email": "invalid", "login": "../plugins"},
+            "email, login, and password are required",
+        ),
+        (
+            "/api/create-user",
+            {"email": "invalid", "login": "../plugins", "password": "short"},
+            "login must be 1-64 characters using letters, numbers, "
+            "periods, underscores, or hyphens",
+        ),
+        (
+            "/api/create-user",
+            {"email": "invalid", "login": "alice", "password": "short"},
+            "password must be between 8-64 characters long",
+        ),
+        (
+            "/api/login",
+            {"email": "invalid"},
+            "email and password are required",
+        ),
+        (
+            "/api/login",
+            {"email": "invalid", "password": "short"},
+            "password must be between 8-64 characters long",
+        ),
+    ],
+)
+def test_validation_preserves_error_priority(endpoint, payload, expected_message):
+    response = create_app().test_client().post(endpoint, json=payload)
+
+    assert response.status_code == 400
+    assert response.json == {"error": expected_message}
+
+
 def test_create_user_rejects_login_with_path_separator():
     response = (
         create_app()
