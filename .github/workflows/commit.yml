@@ -101,5 +101,5 @@ jobs:
         run: pip install -r server/requirements-dev.txt
 
       - name: Run Pytest
-        run: pytest .
+        run: python -m pytest .
         working-directory: ./server
