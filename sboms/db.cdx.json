@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.7",
-  "serialNumber": "urn:uuid:e0055faf-0fa3-475a-b34a-51bdfbd0a153",
+  "serialNumber": "urn:uuid:882fdce2-3b9b-4bf3-b602-7be416e7d316",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-03T15:11:11+02:00",
+    "timestamp": "2026-10-03T17:28:56+02:00",
     "tools": {
       "components": [
         {
@@ -19,8 +19,8 @@
     "component": {
       "bom-ref": "0942ece167ec55a6",
       "type": "container",
-      "name": "tmp/db.tar",
-      "version": "sha256:e2616764f91392ce8a9187acd19b955c15d87293749c510ab40a134a9ba75640"
+      "name": "mariadb",
+      "version": "sha256:805c8e104bd563d5bfa24fadd3f31cd419ea859cb5277f32b5dbf2db714f9ed1"
     },
     "properties": [
       {
