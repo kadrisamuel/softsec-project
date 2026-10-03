@@ -18,7 +18,7 @@ else
     db_image=$(docker compose config --images db)
 fi
 SYFT_FORMAT_PRETTY=1 syft scan server-image.tar -o cyclonedx-json=sboms/server.cdx.json
-SYFT_FORMAT_PRETTY=1 syft scan registry:$db_image -o cyclonedx-json=sboms/db.cdx.json
+SYFT_FORMAT_PRETTY=1 syft scan "registry:$db_image" -o cyclonedx-json=sboms/db.cdx.json
 
 echo "Cleaning up..."
 rm server-image.tar
