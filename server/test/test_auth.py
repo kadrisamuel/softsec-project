@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
 from app import create_app
 from app.auth.tokens import create_token, require_auth
 from flask import g
@@ -105,22 +107,23 @@ def test_create_user_rejects_incorrect_email_type():
     assert response.json == {"error": "Request body is malformed"}
 
 
-def test_create_user_rejects_password_oob():
-    response = (
-        create_app()
-        .test_client()
-        .post(
-            "/api/create-user",
-            json={
-                "email": "user@example.com",
-                "login": "alice",
-                "password": "short",
-            },
-        )
+@pytest.mark.parametrize("password_length", [7, 65])
+def test_create_user_rejects_password_oob(password_length):
+    app = create_app()
+    engine = MagicMock()
+    app.extensions["tatou-db"] = engine
+    response = app.test_client().post(
+        "/api/create-user",
+        json={
+            "email": "user@example.com",
+            "login": "alice",
+            "password": "x" * password_length,
+        },
     )
 
     assert response.status_code == 400
     assert response.json == {"error": "password must be between 8-64 characters long"}
+    engine.begin.assert_not_called()
 
 
 def test_create_user_rejects_incorrect_password_type():
@@ -141,7 +144,8 @@ def test_create_user_rejects_incorrect_password_type():
     assert response.json == {"error": "Request body is malformed"}
 
 
-def test_create_user_creates_user():
+@pytest.mark.parametrize("password", ["test-password", "x" * 8, "x" * 64])
+def test_create_user_creates_user(password):
     app = create_app()
     engine = MagicMock()
     app.extensions["tatou-db"] = engine
@@ -161,7 +165,7 @@ def test_create_user_creates_user():
         json={
             "email": " User@Example.com ",
             "login": "alice",
-            "password": "test-password",
+            "password": password,
         },
     )
 
@@ -176,7 +180,7 @@ def test_create_user_creates_user():
     assert insert_parameters["email"] == "user@example.com"
     assert check_password_hash(
         insert_parameters["password_hash"],
-        "test-password",
+        password,
     )
 
 
@@ -238,15 +242,19 @@ def test_login_invalid_email_type():
     assert response.json == {"error": "Request body is malformed"}
 
 
-def test_login_password_oob():
-    response = (
-        create_app()
-        .test_client()
-        .post("/api/login", json={"email": "user@example.com", "password": "short"})
+@pytest.mark.parametrize("password_length", [7, 65])
+def test_login_password_oob(password_length):
+    app = create_app()
+    engine = MagicMock()
+    app.extensions["tatou-db"] = engine
+    response = app.test_client().post(
+        "/api/login",
+        json={"email": "user@example.com", "password": "x" * password_length},
     )
 
     assert response.status_code == 400
     assert response.json == {"error": "password must be between 8-64 characters long"}
+    engine.connect.assert_not_called()
 
 
 def test_login_invalid_password_type():
@@ -260,7 +268,8 @@ def test_login_invalid_password_type():
     assert response.json == {"error": "Request body is malformed"}
 
 
-def test_login_returns_token_for_valid_credentials():
+@pytest.mark.parametrize("password", ["test-password", "x" * 8, "x" * 64])
+def test_login_returns_token_for_valid_credentials(password):
     app = create_app()
     engine = MagicMock()
     app.extensions["tatou-db"] = engine
@@ -271,13 +280,13 @@ def test_login_returns_token_for_valid_credentials():
         id=7,
         email="user@example.com",
         login="alice",
-        hpassword=generate_password_hash("test-password"),
+        hpassword=generate_password_hash(password),
     )
     connection.execute.return_value = select_result
 
     response = app.test_client().post(
         "/api/login",
-        json={"email": "user@example.com", "password": "test-password"},
+        json={"email": "user@example.com", "password": password},
     )
 
     assert response.status_code == 200
