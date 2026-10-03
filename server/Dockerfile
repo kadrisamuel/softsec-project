@@ -11,7 +11,7 @@ RUN apt-get update \
 WORKDIR /app
 
 # Copy public keys
-COPY keys/Public-keys-20260914/*.asc /app/pub-keys/
+COPY keys/Public-keys-20261003/*.asc /app/pub-keys/
 
 # Copy the package and install runtime dependencies
 COPY requirements.txt /app/requirements.txt
