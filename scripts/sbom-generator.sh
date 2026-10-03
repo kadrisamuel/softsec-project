@@ -15,7 +15,11 @@ if [ -d "tmp" ]; then
 fi
 mkdir tmp
 docker save softsec-project-server:latest > tmp/server.tar
-docker save $(yq '.services.db.image' docker-compose.yml) > tmp/db.tar
+if [[ "$(uname)" == "Darwin" ]]; then
+    docker save $(docker-compose config --images db) > tmp/db.tar
+else
+    docker save $(docker compose config --images db) > tmp/db.tar
+fi
 
 echo "Generating SBOMs..."
 SYFT_FORMAT_PRETTY=1 syft scan tmp/server.tar -o cyclonedx-json=sboms/server.cdx.json
