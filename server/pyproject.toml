@@ -59,6 +59,7 @@ filterwarnings = [
 DEP002 = [
 	"gunicorn",
 	"PyMySQL",
+	"email-validator",
 	"pip-tools",
 	"pip-audit",
 	"deptry",
