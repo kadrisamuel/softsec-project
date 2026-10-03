@@ -9,21 +9,16 @@ else
 fi
 
 echo "Exporting docker images..."
-if [ -d "tmp" ]; then
-    echo "Cleaning existing image exports..."
-    rm -r tmp
-fi
-mkdir tmp
-docker save softsec-project-server:latest > tmp/server.tar
-if [[ "$(uname)" == "Darwin" ]]; then
-    docker save $(docker-compose config --images db) > tmp/db.tar
-else
-    docker save $(docker compose config --images db) > tmp/db.tar
-fi
+docker save softsec-project-server:latest > server-image.tar
 
 echo "Generating SBOMs..."
-SYFT_FORMAT_PRETTY=1 syft scan tmp/server.tar -o cyclonedx-json=sboms/server.cdx.json
-SYFT_FORMAT_PRETTY=1 syft scan tmp/db.tar -o cyclonedx-json=sboms/db.cdx.json
+if [[ "$(uname)" == "Darwin" ]]; then
+    db_image=$(docker-compose config --images db)
+else
+    db_image=$(docker compose config --images db)
+fi
+SYFT_FORMAT_PRETTY=1 syft scan server-image.tar -o cyclonedx-json=sboms/server.cdx.json
+SYFT_FORMAT_PRETTY=1 syft scan registry:$db_image -o cyclonedx-json=sboms/db.cdx.json
 
 echo "Cleaning up..."
-rm -r tmp
+rm server-image.tar
