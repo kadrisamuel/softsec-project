@@ -1,6 +1,5 @@
 """Auth blueprint routes"""
 
-import re
 from http import HTTPStatus
 
 from flask import current_app, jsonify, request
@@ -13,29 +12,33 @@ from ..db import get_engine
 from . import bp
 from .tokens import create_token
 
-_LOGIN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
-
 
 class CreateUserModel(BaseModel):
     """Pydantic model for create user requests"""
 
     email: EmailStr
-    login: str = Field(min_length=1, max_length=64, pattern=_LOGIN_RE.pattern)
+    login: str = Field(
+        min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+    )
     password: str = Field(min_length=8, max_length=64)
 
     @field_validator("email", "login", mode="before")
     @classmethod
-    def strip_strings(cls, value: str) -> str:
+    def strip_strings(cls, value):
         """Remove surrounding spaces from string"""
 
-        return value.strip()
+        if isinstance(value, str):
+            return value.strip()
+        return value
 
     @field_validator("email", mode="before")
     @classmethod
-    def lower_strings(cls, value: str) -> str:
+    def lower_strings(cls, value):
         """Lower-case string"""
 
-        return value.lower()
+        if isinstance(value, str):
+            return value.lower()
+        return value
 
 
 class LoginModel(BaseModel):
@@ -46,10 +49,12 @@ class LoginModel(BaseModel):
 
     @field_validator("email", mode="before")
     @classmethod
-    def sanitize_email(cls, value: str) -> str:
+    def sanitize_email(cls, value):
         """Remove surrounding spaces and lower email"""
 
-        return value.strip().lower()
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
 
 
 @bp.post("/create-user")

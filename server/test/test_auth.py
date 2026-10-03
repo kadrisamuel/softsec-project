@@ -51,6 +51,24 @@ def test_create_user_rejects_login_with_path_separator():
     }
 
 
+def test_create_user_rejects_incorrect_login_type():
+    response = (
+        create_app()
+        .test_client()
+        .post(
+            "/api/create-user",
+            json={
+                "email": "user@exmaple.com",
+                "login": 1234,
+                "password": "test-password",
+            },
+        )
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "Request body is malformed"}
+
+
 def test_create_user_rejects_invalid_email():
     response = (
         create_app()
@@ -69,7 +87,25 @@ def test_create_user_rejects_invalid_email():
     assert response.json == {"error": "email is malformed"}
 
 
-def test_create_user_password_oob():
+def test_create_user_rejects_incorrect_email_type():
+    response = (
+        create_app()
+        .test_client()
+        .post(
+            "/api/create-user",
+            json={
+                "email": 1234,
+                "login": "alice",
+                "password": "test-password",
+            },
+        )
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "Request body is malformed"}
+
+
+def test_create_user_rejects_password_oob():
     response = (
         create_app()
         .test_client()
@@ -85,6 +121,24 @@ def test_create_user_password_oob():
 
     assert response.status_code == 400
     assert response.json == {"error": "password must be between 8-64 characters long"}
+
+
+def test_create_user_rejects_incorrect_password_type():
+    response = (
+        create_app()
+        .test_client()
+        .post(
+            "/api/create-user",
+            json={
+                "email": "user@example.com",
+                "login": "alice",
+                "password": 1234,
+            },
+        )
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "Request body is malformed"}
 
 
 def test_create_user_creates_user():
@@ -173,6 +227,17 @@ def test_login_invalid_email():
     assert response.json == {"error": "email is malformed"}
 
 
+def test_login_invalid_email_type():
+    response = (
+        create_app()
+        .test_client()
+        .post("/api/login", json={"email": 1234, "password": "test-password"})
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "Request body is malformed"}
+
+
 def test_login_password_oob():
     response = (
         create_app()
@@ -182,6 +247,17 @@ def test_login_password_oob():
 
     assert response.status_code == 400
     assert response.json == {"error": "password must be between 8-64 characters long"}
+
+
+def test_login_invalid_password_type():
+    response = (
+        create_app()
+        .test_client()
+        .post("/api/login", json={"email": "user@example.com", "password": 1234})
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "Request body is malformed"}
 
 
 def test_login_returns_token_for_valid_credentials():
