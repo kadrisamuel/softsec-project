@@ -57,15 +57,17 @@ class LoginModel(BaseModel):
         return value
 
 
-def validation_error_message(error: ValidationError, required_message: str) -> str:
+def _validation_error_message(error: ValidationError, required_message: str) -> str:
     """Choose an error message in missing, login, password, email order."""
+
     errors = error.errors()
     if any(e["type"] == "missing" for e in errors):
         return required_message
 
     if any(
         "login" in e["loc"]
-        and e["type"] in {"string_too_long", "string_too_short", "string_pattern_mismatch"}
+        and e["type"]
+        in {"string_too_long", "string_too_short", "string_pattern_mismatch"}
         for e in errors
     ):
         return (
@@ -74,8 +76,7 @@ def validation_error_message(error: ValidationError, required_message: str) -> s
         )
 
     if any(
-        "password" in e["loc"]
-        and e["type"] in {"string_too_long", "string_too_short"}
+        "password" in e["loc"] and e["type"] in {"string_too_long", "string_too_short"}
         for e in errors
     ):
         return "password must be between 8-64 characters long"
@@ -105,7 +106,7 @@ def create_user():
     try:
         validated_data = CreateUserModel.model_validate(payload)
     except ValidationError as val_err:
-        message = validation_error_message(
+        message = _validation_error_message(
             val_err, "email, login, and password are required"
         )
         return jsonify({"error": message}), HTTPStatus.BAD_REQUEST
@@ -162,7 +163,7 @@ def login_user():
     try:
         validated_data = LoginModel.model_validate(payload)
     except ValidationError as val_err:
-        message = validation_error_message(val_err, "email and password are required")
+        message = _validation_error_message(val_err, "email and password are required")
         return jsonify({"error": message}), HTTPStatus.BAD_REQUEST
 
     try:
