@@ -83,7 +83,7 @@ def test_read_only_document_route_is_registered(method, route):
     available_routes = {
         (available_method, rule.rule)
         for rule in app.url_map.iter_rules()
-        for available_method in rule.methods
+        for available_method in rule.methods or ()
     }
 
     assert (method, route) in available_routes
@@ -220,7 +220,7 @@ def test_write_document_route_is_registered(method, route):
     available_routes = {
         (available_method, rule.rule)
         for rule in app.url_map.iter_rules()
-        for available_method in rule.methods
+        for available_method in rule.methods or ()
     }
 
     assert (method, route) in available_routes
