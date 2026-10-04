@@ -190,13 +190,12 @@ def list_versions(document_id: int | None = None):
                     """
                     SELECT v.id, v.documentid, v.link, v.intended_for,
                            v.secret, v.method
-                    FROM Users u
-                    JOIN Documents d ON d.ownerid = u.id
+                    FROM Documents d
                     JOIN Versions v ON d.id = v.documentid
-                    WHERE u.login = :glogin AND d.id = :did
+                    WHERE d.ownerid = :gid AND d.id = :did
                     """
                 ),
-                {"glogin": str(g.user["login"]), "did": document_id},
+                {"gid": int(g.user["id"]), "did": document_id},
             ).all()
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception(
@@ -230,13 +229,12 @@ def list_all_versions():
                 text(
                     """
                     SELECT v.id, v.documentid, v.link, v.intended_for, v.method
-                    FROM Users u
-                    JOIN Documents d ON d.ownerid = u.id
+                    FROM Documents d
                     JOIN Versions v ON d.id = v.documentid
-                    WHERE u.login = :glogin
+                    WHERE d.ownerid = :gid
                     """
                 ),
-                {"glogin": str(g.user["login"])},
+                {"gid": int(g.user["id"])},
             ).all()
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error while listing all versions")
