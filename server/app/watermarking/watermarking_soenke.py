@@ -3,7 +3,7 @@
 import io
 import os
 from random import Random
-from typing import Final
+from typing import ClassVar, cast
 
 import numpy
 import pymupdf
@@ -102,13 +102,13 @@ def _extract_page(document: pymupdf.Document, page_index: int) -> numpy.ndarray:
     """Extract YCbCr data of document page"""
 
     pixmap_rgb: pymupdf.Pixmap = document.get_page_pixmap(
-        page_index, dpi=300, colorspace="rgb"
+        page_index, dpi=300, colorspace=pymupdf.csRGB
     )
     array_rgb: numpy.ndarray = numpy.reshape(
         numpy.frombuffer(pixmap_rgb.samples, dtype=numpy.uint8),
         shape=(pixmap_rgb.height, pixmap_rgb.width, pixmap_rgb.n),
     )
-    pillow_rgb: Image = Image.fromarray(array_rgb, mode="RGB")
+    pillow_rgb: Image.Image = Image.fromarray(array_rgb, mode="RGB")
 
     return numpy.array(pillow_rgb.convert("YCbCr"))
 
@@ -116,7 +116,7 @@ def _extract_page(document: pymupdf.Document, page_index: int) -> numpy.ndarray:
 class WatermarkingSoenke(WatermarkingMethod):
     """Implementation of a PDF watermarking algorithm"""
 
-    name: Final[str] = "watermarking-soenke"
+    name: ClassVar[str] = "watermarking-soenke"
 
     @staticmethod
     def get_usage() -> str:
@@ -168,8 +168,8 @@ class WatermarkingSoenke(WatermarkingMethod):
                     )
 
                     # 2D DCT
-                    coefficients: numpy.ndarray = fft.dctn(
-                        tile, norm="ortho", axes=[0, 1]
+                    coefficients: numpy.ndarray = cast(
+                        numpy.ndarray, fft.dctn(tile, norm="ortho", axes=[0, 1])
                     )
 
                     # Modify random coefficients based on bits in payload
@@ -192,10 +192,13 @@ class WatermarkingSoenke(WatermarkingMethod):
                             )
 
                     # 2D IDCT
-                    reconstructed_tile: numpy.ndarray = fft.idctn(
-                        coefficients,
-                        norm="ortho",
-                        axes=[0, 1],
+                    reconstructed_tile: numpy.ndarray = cast(
+                        numpy.ndarray,
+                        fft.idctn(
+                            coefficients,
+                            norm="ortho",
+                            axes=[0, 1],
+                        ),
                     )
 
                     # Insert reconstructed tile into page
@@ -267,8 +270,8 @@ class WatermarkingSoenke(WatermarkingMethod):
                     )
 
                     # 2D DCT
-                    coefficients: numpy.ndarray = fft.dctn(
-                        tile, norm="ortho", axes=[0, 1]
+                    coefficients: numpy.ndarray = cast(
+                        numpy.ndarray, fft.dctn(tile, norm="ortho", axes=[0, 1])
                     )
 
                     # Sample tile
@@ -299,7 +302,7 @@ class WatermarkingSoenke(WatermarkingMethod):
                 page_secrets.append(
                     _extract_secret(derived_key, nonce, bytes(byte_array))
                 )
-            except SecretNotFoundError():
+            except SecretNotFoundError:
                 if document.page_count != 1:
                     continue
                 raise
