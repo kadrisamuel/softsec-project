@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import create_engine, text
 
 from app import create_app
 from app.auth.tokens import create_token
@@ -147,6 +148,62 @@ def test_list_versions_returns_versions():
             }
         ]
     }
+
+
+def test_version_lists_do_not_mix_users_with_same_login():
+    app = create_app()
+    engine = create_engine("sqlite://")
+    app.extensions["tatou-db"] = engine
+
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE Users (id INTEGER, login TEXT)"))
+        connection.execute(text("CREATE TABLE Documents (id INTEGER, ownerid INTEGER)"))
+        connection.execute(
+            text(
+                "CREATE TABLE Versions (id INTEGER, documentid INTEGER, link TEXT, "
+                "intended_for TEXT, secret TEXT, method TEXT)"
+            )
+        )
+        connection.execute(text("INSERT INTO Users VALUES (1, 'alice'), (2, 'alice')"))
+        connection.execute(text("INSERT INTO Documents VALUES (10, 1), (20, 2)"))
+        connection.execute(
+            text(
+                "INSERT INTO Versions VALUES "
+                "(11, 10, 'link-a', 'a', 'secret-a', 'eof'), "
+                "(21, 20, 'link-b', 'b', 'secret-b', 'eof')"
+            )
+        )
+
+    client = app.test_client()
+    for user_id, own_document_id, other_document_id in ((1, 10, 20), (2, 20, 10)):
+        with app.app_context():
+            token = create_token(user_id, "alice", f"user{user_id}@example.com")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        own_versions = client.get(
+            f"/api/list-versions/{own_document_id}", headers=headers
+        )
+        other_versions = client.get(
+            f"/api/list-versions/{other_document_id}", headers=headers
+        )
+        all_versions = client.get("/api/list-all-versions", headers=headers)
+
+        assert own_versions.status_code == 200
+        own_payload = own_versions.get_json()
+        assert isinstance(own_payload, dict)
+        assert [version["documentid"] for version in own_payload["versions"]] == [
+            own_document_id
+        ]
+        assert other_versions.status_code == 200
+        assert other_versions.json == {"versions": []}
+        assert all_versions.status_code == 200
+        all_payload = all_versions.get_json()
+        assert isinstance(all_payload, dict)
+        assert [version["documentid"] for version in all_payload["versions"]] == [
+            own_document_id
+        ]
+
+    engine.dispose()
 
 
 @pytest.mark.parametrize(
