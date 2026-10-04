@@ -97,9 +97,10 @@ def upload_document():
                     "size": int(size),
                 },
             )
-            document_id = int(
-                connection.execute(text("SELECT LAST_INSERT_ID()")).scalar()
-            )
+            inserted_id = connection.execute(text("SELECT LAST_INSERT_ID()")).scalar()
+            if inserted_id is None:
+                raise RuntimeError("Database did not return the inserted document ID")
+            document_id = int(inserted_id)
             row = connection.execute(
                 text(
                     """
@@ -177,10 +178,12 @@ def list_versions(document_id: int | None = None):
     """List all versions of document owned by user"""
 
     if document_id is None:
-        document_id = request.args.get("id") or request.args.get("documentid")
+        raw_document_id = request.args.get("id") or request.args.get("documentid")
+        if raw_document_id is None:
+            return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
         try:
-            document_id = int(document_id)
-        except (TypeError, ValueError):
+            document_id = int(raw_document_id)
+        except ValueError:
             return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
     try:
@@ -260,10 +263,12 @@ def get_document(document_id: int | None = None):
     """Download document owned by user"""
 
     if document_id is None:
-        document_id = request.args.get("id") or request.args.get("documentid")
+        raw_document_id = request.args.get("id") or request.args.get("documentid")
+        if raw_document_id is None:
+            return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
         try:
-            document_id = int(document_id)
-        except (TypeError, ValueError):
+            document_id = int(raw_document_id)
+        except ValueError:
             return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
     try:
@@ -387,18 +392,21 @@ def get_version(link: str):
 @bp.route("/delete-document", methods=["DELETE", "POST"])
 @bp.route("/delete-document/<document_id>", methods=["DELETE"])
 @require_auth
-def delete_document(document_id: int | None = None):
+def delete_document(document_id: str | int | None = None):
     """Delete document owned by user"""
 
-    if not document_id:
-        document_id = (
-            request.args.get("id")
-            or request.args.get("documentid")
-            or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
-        )
+    raw_document_id: object = document_id
+    if not raw_document_id:
+        raw_document_id = request.args.get("id") or request.args.get("documentid")
+        if not raw_document_id and request.is_json:
+            payload = request.get_json(silent=True)
+            if isinstance(payload, dict):
+                raw_document_id = payload.get("id")
+    if not isinstance(raw_document_id, (str, int, float)):
+        return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
     try:
-        document_id = int(document_id)
-    except (TypeError, ValueError):
+        document_id = int(raw_document_id)
+    except (OverflowError, ValueError):
         return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
     try:
