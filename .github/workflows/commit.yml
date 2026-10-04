@@ -101,5 +101,5 @@ jobs:
         run: pip install -r server/requirements-dev.txt
 
       - name: Run Pytest
-        run: python -m pytest .
+        run: python -m pytest --cov-report=term-missing --cov app
         working-directory: ./server
