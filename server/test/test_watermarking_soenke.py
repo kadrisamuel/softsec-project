@@ -13,7 +13,7 @@ from app.watermarking.watermarking_soenke import (
     _prepare_payload,
     _sanity_check_inputs,
 )
-from pymupdf import Colorspace, Document
+from pymupdf import Document, csGRAY
 from reedsolo import RSCodec
 
 
@@ -141,7 +141,7 @@ class TestWatermarkingSoenke:
             watermarked_bytes = watermarking.add_watermark(pdf, secret, key)
         watermarked_doc = Document(stream=watermarked_bytes)
         for page in watermarked_doc:
-            pagemap = page.get_pixmap(dpi=300, colorspace=Colorspace("GRAY"))
+            pagemap = page.get_pixmap(dpi=300, colorspace=csGRAY)
             page.clean_contents()
             page.insert_image(page.rect, stream=pagemap.tobytes())
         extracted_secret = watermarking.read_secret(watermarked_doc.tobytes(), key)
