@@ -7,11 +7,13 @@ import pytest
 from app.watermarking.method import InvalidKeyError, SecretNotFoundError
 from app.watermarking.watermarking_soenke import (
     PAYLOAD_LENGTH,
+    WatermarkingSoenke,
     _derive_key,
     _extract_secret,
     _prepare_payload,
     _sanity_check_inputs,
 )
+from pymupdf import Colorspace, Document
 from reedsolo import RSCodec
 
 
@@ -26,7 +28,7 @@ def secret() -> str:
 def key() -> str:
     """Key shared between tests"""
 
-    return "test-secret"
+    return "test-key"
 
 
 @pytest.fixture(scope="session")
@@ -120,3 +122,27 @@ class TestWatermarkingSoenke:
 
         with pytest.raises(SecretNotFoundError):
             _extract_secret(derived_key, nonce, scrambled_payload)
+
+    # ---------- Roundtrip ----------
+    def test_rountrip(self, key: str, secret: str):
+        """Test roundtrip watermarking"""
+
+        watermarking = WatermarkingSoenke()
+        with open("test/samples/sample_1.pdf", "rb") as pdf:
+            watermarked_pdf = watermarking.add_watermark(pdf, secret, key)
+        extracted_secret = watermarking.read_secret(watermarked_pdf, key)
+        assert extracted_secret == secret
+
+    def test_rountrip_greyscale(self, key: str, secret: str):
+        """Test roundtrip watermarking but remove colors from watermarked pdf"""
+
+        watermarking = WatermarkingSoenke()
+        with open("test/samples/sample_1.pdf", "rb") as pdf:
+            watermarked_bytes = watermarking.add_watermark(pdf, secret, key)
+        watermarked_doc = Document(stream=watermarked_bytes)
+        for page in watermarked_doc:
+            pagemap = page.get_pixmap(dpi=300, colorspace=Colorspace("GRAY"))
+            page.clean_contents()
+            page.insert_image(page.rect, stream=pagemap.tobytes())
+        extracted_secret = watermarking.read_secret(watermarked_doc.tobytes(), key)
+        assert extracted_secret == secret
