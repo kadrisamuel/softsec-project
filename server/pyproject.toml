@@ -67,6 +67,7 @@ DEP002 = [
 	"pylint",
 	"pyright",
 	"bandit",
+	"pytest-cov",
 ]
 
 [project.scripts]
