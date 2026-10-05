@@ -110,6 +110,13 @@ def run_group(
     ]
     child_env = os.environ.copy()
     child_env["RMAP_SERVER_PRIVATE_KEY_PASS"] = passphrase
+    warning_filter = "ignore::Warning:pgpy"
+    existing_warning_filters = child_env.get("PYTHONWARNINGS")
+    child_env["PYTHONWARNINGS"] = (
+        f"{existing_warning_filters},{warning_filter}"
+        if existing_warning_filters
+        else warning_filter
+    )
 
     logger.info("=== %s at %s ===", group, base_url)
     try:

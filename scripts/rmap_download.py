@@ -4,22 +4,16 @@ using RMAP from specific group's server."""
 
 from __future__ import annotations
 
-import sys
 import argparse
+import getpass
 import os
+import re
+import sys
 from pathlib import Path
 
-import getpass
-import re
-import warnings
-
-from cryptography.utils import CryptographyDeprecationWarning
-
-warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
-
 import pgpy
-from rmap import RMAPClient, RMAPError
 import requests
+from rmap import RMAPClient, RMAPError
 
 
 DEFAULT_KEY_DIRECTORY = Path("server/keys/Public-keys-20261003")
