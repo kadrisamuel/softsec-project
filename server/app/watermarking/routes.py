@@ -25,10 +25,14 @@ def create_watermark(document_id: int | None = None):
     try:
         if not document_id:
             document_id = (
-                request.args.get("id")
-                or request.args.get("documentid")
-                or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
+                request.args.get("id", type=int)
+                or request.args.get("documentid", type=int)
+                or (request.get_json(silent=True) or {} if request.is_json else {}).get("id")
             )
+            if document_id:
+                document_id = int(document_id)
+            else:
+                return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
     except (TypeError, ValueError):
         return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
@@ -39,12 +43,6 @@ def create_watermark(document_id: int | None = None):
     secret = payload.get("secret")
     key = payload.get("key")
 
-    try:
-        document_id = int(document_id)
-    except (TypeError, ValueError):
-        return jsonify(
-            {"error": "document_id (int) is required"}
-        ), HTTPStatus.BAD_REQUEST
     if (
         not method
         or not intended_for
@@ -241,10 +239,14 @@ def read_watermark(document_id: int | None = None):
     try:
         if not document_id:
             document_id = (
-                request.args.get("id")
-                or request.args.get("documentid")
+                request.args.get("id", type=int)
+                or request.args.get("documentid", type=int)
                 or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
             )
+        if document_id:
+            document_id = int(document_id)
+        else:
+            return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
     except (TypeError, ValueError):
         return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
@@ -253,12 +255,6 @@ def read_watermark(document_id: int | None = None):
     position = payload.get("position") or None
     key = payload.get("key")
 
-    try:
-        document_id = int(document_id)
-    except (TypeError, ValueError):
-        return jsonify(
-            {"error": "document_id (int) is required"}
-        ), HTTPStatus.BAD_REQUEST
     if not method or not isinstance(key, str):
         return jsonify(
             {"error": "method, and key are required"}

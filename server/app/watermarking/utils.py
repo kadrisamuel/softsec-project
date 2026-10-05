@@ -104,7 +104,7 @@ def is_watermarking_applicable(
     method: str | WatermarkingMethod,
     pdf: PdfSource,
     position: str | None = None,
-) -> bytes:
+) -> bool:
     """Apply a watermark using the specified method and return new PDF bytes."""
     m = get_method(method)
     return m.is_watermark_applicable(pdf=pdf, position=position)
@@ -170,11 +170,17 @@ def explore_pdf(pdf: PdfSource) -> dict[str, Any]:
         doc = fitz.open(stream=data, filetype="pdf")
         # Pages as first-class nodes
         for page_index in range(doc.page_count):
+            bb_rect = doc.load_page(page_index).bound()
             node = {
                 "id": f"page:{page_index:04d}",
                 "type": "Page",
                 "index": page_index,
-                "bbox": list(doc.load_page(page_index).bound()),  # [x0,y0,x1,y1]
+                "bbox": [
+                    bb_rect.x0,
+                    bb_rect.y0,
+                    bb_rect.x1,
+                    bb_rect.y1,
+                ],  # [x0,y0,x1,y1]
             }
             root["children"].append(node)
 
