@@ -6,17 +6,23 @@ from __future__ import annotations
 
 import sys
 import argparse
+import os
 from pathlib import Path
 
 import getpass
 import re
+import warnings
+
+from cryptography.utils import CryptographyDeprecationWarning
+
+warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 import pgpy
 from rmap import RMAPClient, RMAPError
 import requests
 
 
-DEFAULT_KEY_DIRECTORY = Path("server/keys/Public-keys-20260914")
+DEFAULT_KEY_DIRECTORY = Path("server/keys/Public-keys-20261003")
 DEFAULT_OUTPUT_DIRECTORY = Path("output/rmap")
 RMAP_INITIATE_PATH = "/api/rmap-initiate"
 RMAP_GET_LINK_PATH = "/api/rmap-get-link"
@@ -106,6 +112,10 @@ def read_client_passphrase(private_key_path: Path) -> str | None:
     if not private_key.is_protected:
         return None
 
+    passphrase = os.environ.get("RMAP_SERVER_PRIVATE_KEY_PASS")
+    if passphrase is not None:
+        return passphrase
+
     return getpass.getpass(
         f"Passphrase for {private_key_path}: "
     )
@@ -118,12 +128,14 @@ def post_rmap_message(
     timeout: float,
 ) -> dict:
     """POST an RMAP message and return its JSON response."""
+    print(f"POST {url}", flush=True)
     response = session.post(
         url,
         json=payload,
         timeout=timeout,
         allow_redirects=False,
     )
+    print(f"POST {url} -> HTTP {response.status_code}", flush=True)
     if 300 <= response.status_code < 400:
         raise RuntimeError("The RMAP endpoint returned a redirect.")
     response.raise_for_status()
@@ -131,6 +143,12 @@ def post_rmap_message(
     data = response.json()
     if not isinstance(data, dict):
         raise RuntimeError(f"Unexpected response from {url}")
+
+    if isinstance(data.get("payload"), str):
+        summary = f"encrypted payload ({len(data['payload'])} characters; omitted)"
+    else:
+        summary = f"JSON {data!r}"
+    print(f"Response from {url}: {summary}", flush=True)
 
     return data
 
@@ -193,12 +211,14 @@ def download_pdf(args: argparse.Namespace, link: str) -> Path:
     destination = args.output_directory / f"{link}.pdf"
     destination.parent.mkdir(parents=True, exist_ok=True)
 
+    print(f"GET {url}", flush=True)
     with requests.get(
         url,
         stream=True,
         timeout=args.timeout,
         allow_redirects=False,
     ) as response:
+        print(f"GET {url} -> HTTP {response.status_code}", flush=True)
         if 300 <= response.status_code < 400:
             raise RuntimeError("The PDF endpoint returned a redirect.")
         response.raise_for_status()
