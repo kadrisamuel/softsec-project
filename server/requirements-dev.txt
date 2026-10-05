@@ -129,8 +129,6 @@ pyasn1==0.6.4
     # via pgpy
 pycparser==3.0
     # via cffi
-python-dotenv==1.2.4
-    # via Tatou-Server (pyproject.toml)
 pydantic==2.13.5
     # via Tatou-Server (pyproject.toml)
 pydantic-core==2.46.5
@@ -158,6 +156,8 @@ pytest==9.1.1
     #   Tatou-Server (pyproject.toml)
     #   pytest-cov
 pytest-cov==7.1.0
+    # via Tatou-Server (pyproject.toml)
+python-dotenv==1.2.4
     # via Tatou-Server (pyproject.toml)
 pyyaml==6.0.3
     # via bandit
