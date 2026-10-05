@@ -3,8 +3,15 @@
 from __future__ import annotations
 
 import re
-from typing import Final
+from typing import ClassVar
 
+from ..method import (
+    PdfSource,
+    SecretNotFoundError,
+    WatermarkingError,
+    WatermarkingMethod,
+    load_pdf_bytes,
+)
 from .key_schedule import derive_keys
 from .message_codec import (
     ENCODED_MESSAGE_BYTES,
@@ -18,19 +25,11 @@ from .pdf_carrier import (
 )
 from .visible import visible_identifier
 
-from ..method import (
-    PdfSource,
-    SecretNotFoundError,
-    WatermarkingError,
-    WatermarkingMethod,
-    load_pdf_bytes,
-)
-
 
 class RGBDFTQIMWatermark(WatermarkingMethod):
     """Raster watermark using RGB frequency-domain embedding"""
 
-    name: Final[str] = "rgb-dft-qim-v1"
+    name: ClassVar[str] = "rgb-dft-qim-v1"
 
     @staticmethod
     def get_usage() -> str:

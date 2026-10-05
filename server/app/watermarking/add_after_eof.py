@@ -26,7 +26,7 @@ import base64
 import hashlib
 import hmac
 import json
-from typing import Final
+from typing import ClassVar, Final
 
 from .method import (
     InvalidKeyError,
@@ -56,7 +56,7 @@ class AddAfterEOF(WatermarkingMethod):
     using the caller-provided ``key`` (UTF‑8) and HMAC‑SHA256.
     """
 
-    name: Final[str] = "toy-eof"
+    name: ClassVar[str] = "toy-eof"
 
     # Constants
     _MAGIC: Final[bytes] = b"\n%%WM-ADD-AFTER-EOF:v1\n"

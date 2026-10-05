@@ -7,7 +7,6 @@ import hmac
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-
 _IDENTIFIER_BYTES = 8
 _FONT_SIZE = 48
 _TEXT_OPACITY = 48
@@ -80,8 +79,8 @@ def add_visible_pattern(
     stamp = Image.new(
         "RGBA",
         (
-            text_width + 2 * _STAMP_PADDING,
-            text_height + 2 * _STAMP_PADDING,
+            int(text_width + 2 * _STAMP_PADDING),
+            int(text_height + 2 * _STAMP_PADDING),
         ),
         (0, 0, 0, 0),
     )
