@@ -12,10 +12,11 @@ import argparse
 import logging
 import os
 import re
-import shlex
 import subprocess
 import sys
 from pathlib import Path
+
+from dotenv import dotenv_values
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,27 +57,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def read_env_value(env_path: Path, name: str) -> str:
-    """Read one .env value without executing the file as shell code."""
-    for raw_line in env_path.read_text(encoding="utf8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("export "):
-            line = line[7:].lstrip()
-        key, separator, value = line.partition("=")
-        if separator and key.strip() == name:
-            value = value.strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-                if value[0] == "'":
-                    value = value[1:-1]
-                else:
-                    parsed = shlex.split(value, comments=False)
-                    value = parsed[0] if parsed else ""
-            else:
-                value = value.partition("#")[0].strip()
-            if value:
-                return value
-            break
+    """Read one value from the project's .env file."""
+    value = dotenv_values(env_path).get(name)
+    if value:
+        return value
     raise ValueError(f"{name} is missing or empty in {env_path}")
 
 
