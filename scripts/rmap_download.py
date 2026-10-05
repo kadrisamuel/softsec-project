@@ -9,12 +9,17 @@ import getpass
 import os
 import re
 import sys
+import warnings
 from pathlib import Path
 
-import pgpy
 import requests
-from rmap import RMAPClient, RMAPError
+from cryptography.utils import CryptographyDeprecationWarning
 
+# PGPy can emit these warnings while it is being imported.
+warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
+
+import pgpy  # pylint: disable=wrong-import-position
+from rmap import RMAPClient, RMAPError  # pylint: disable=wrong-import-position
 
 DEFAULT_KEY_DIRECTORY = Path("server/keys/Public-keys-20261003")
 DEFAULT_OUTPUT_DIRECTORY = Path("output/rmap")
