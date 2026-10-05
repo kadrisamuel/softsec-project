@@ -24,15 +24,13 @@ def create_watermark(document_id: int | None = None):
 
     try:
         if not document_id:
-            document_id = (
-                request.args.get("id", type=int)
-                or request.args.get("documentid", type=int)
-                or (request.get_json(silent=True) or {} if request.is_json else {}).get("id")
-            )
+            document_id = (request.get_json(silent=True) or {}).get("id")
             if document_id:
                 document_id = int(document_id)
             else:
-                return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
+                return jsonify(
+                    {"error": "document id required"}
+                ), HTTPStatus.BAD_REQUEST
     except (TypeError, ValueError):
         return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
@@ -238,15 +236,13 @@ def read_watermark(document_id: int | None = None):
 
     try:
         if not document_id:
-            document_id = (
-                request.args.get("id", type=int)
-                or request.args.get("documentid", type=int)
-                or (request.is_json and (request.get_json(silent=True) or {}).get("id"))
-            )
-        if document_id:
-            document_id = int(document_id)
-        else:
-            return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
+            document_id = (request.get_json(silent=True) or {}).get("id")
+            if document_id:
+                document_id = int(document_id)
+            else:
+                return jsonify(
+                    {"error": "document id required"}
+                ), HTTPStatus.BAD_REQUEST
     except (TypeError, ValueError):
         return jsonify({"error": "document id required"}), HTTPStatus.BAD_REQUEST
 
