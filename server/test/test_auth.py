@@ -23,6 +23,7 @@ def auth_app():
     yield app
 
     engine.begin.assert_not_called()
+    engine.connect.assert_not_called()
 
 
 def test_auth_blueprint_is_registered():
@@ -208,21 +209,21 @@ def test_create_user_rejects_incorrect_password_type(auth_app):
 
 def test_create_user_db_error():
     app = create_app()
+
+    connection = MagicMock()
+    connection.execute.side_effect = DatabaseError()
+
     engine = MagicMock()
-    engine.execute.side_effect = DatabaseError()
+    engine.begin.return_value.__enter__.return_value = connection
     app.extensions["tatou-db"] = engine
 
-    response = (
-        create_app()
-        .test_client()
-        .post(
-            "/api/create-user",
-            json={
-                "email": "user@example.com",
-                "login": "alice",
-                "password": "test-password",
-            },
-        )
+    response = app.test_client().post(
+        "/api/create-user",
+        json={
+            "email": "user@example.com",
+            "login": "alice",
+            "password": "test-password",
+        },
     )
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
@@ -254,7 +255,7 @@ def test_create_user_creates_user(password):
         },
     )
 
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     assert response.json == {
         "id": 7,
         "email": "user@example.com",
@@ -373,7 +374,7 @@ def test_login_returns_token_for_valid_credentials(password):
         json={"email": "user@example.com", "password": password},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert response.json["token_type"] == "bearer"
     assert response.json["expires_in"] == app.config["TOKEN_TTL_SECONDS"]
     assert response.json["token"]
@@ -400,17 +401,17 @@ def test_login_rejects_invalid_credentials():
 
 def test_login_db_error():
     app = create_app()
+
+    connection = MagicMock()
+    connection.execute.side_effect = DatabaseError()
+
     engine = MagicMock()
-    engine.execute.side_effect = DatabaseError()
+    engine.connect.return_value.__enter__.return_value = connection
     app.extensions["tatou-db"] = engine
 
-    response = (
-        create_app()
-        .test_client()
-        .post(
-            "/api/login",
-            json={"email": "user@example.com", "password": "test-password"},
-        )
+    response = app.test_client().post(
+        "/api/login",
+        json={"email": "user@example.com", "password": "test-password"},
     )
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
@@ -476,7 +477,7 @@ def test_require_auth_accepts_valid_token():
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert response.json == {
         "user": {
             "id": 7,
