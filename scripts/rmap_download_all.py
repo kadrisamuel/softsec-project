@@ -18,7 +18,6 @@ from pathlib import Path
 
 from dotenv import dotenv_values
 
-
 ROOT = Path(__file__).resolve().parent.parent
 CLIENT_SCRIPT = ROOT / "scripts/rmap_download.py"
 DEFAULT_KEY_DIRECTORY = ROOT / "server/keys/Public-keys-20261003"
@@ -111,11 +110,16 @@ def run_group(
         return False
 
     for line in (result.stdout + result.stderr).splitlines():
-        logger.info("%s | %s", group, line)
+        if line == "HEALTHZ SUCCESS":
+            logger.info("%s: HEALTHZ SUCCESS", group)
+        elif line.startswith("HEALTHZ FAILED:"):
+            logger.error("%s: %s", group, line)
+        else:
+            logger.info("%s | %s", group, line)
     if result.returncode:
-        logger.error("%s: FAILED (exit code %d)", group, result.returncode)
+        logger.error("%s: RMAP FAILED (exit code %d)", group, result.returncode)
         return False
-    logger.info("%s: SUCCESS", group)
+    logger.info("%s: RMAP SUCCESS", group)
     return True
 
 

@@ -23,6 +23,7 @@ from rmap import RMAPClient, RMAPError  # pylint: disable=wrong-import-position
 
 DEFAULT_KEY_DIRECTORY = Path("server/keys/Public-keys-20261003")
 DEFAULT_OUTPUT_DIRECTORY = Path("output/rmap")
+HEALTHZ_PATH = "/healthz"
 RMAP_INITIATE_PATH = "/api/rmap-initiate"
 RMAP_GET_LINK_PATH = "/api/rmap-get-link"
 PDF_DOWNLOAD_PATH = "/api/get-version"
@@ -120,6 +121,36 @@ def read_client_passphrase(private_key_path: Path) -> str | None:
     )
 
 
+def check_health(
+    session: requests.Session,
+    url: str,
+    timeout: float,
+) -> None:
+    """Confirm the server and its database are healthy."""
+    try:
+        print(f"GET {url}", flush=True)
+        response = session.get(
+            url,
+            timeout=timeout,
+            allow_redirects=False,
+        )
+        print(f"GET {url} -> HTTP {response.status_code}", flush=True)
+        if 300 <= response.status_code < 400:
+            raise RuntimeError("The endpoint returned a redirect.")
+        response.raise_for_status()
+
+        data = response.json()
+        if not isinstance(data, dict):
+            raise RuntimeError(f"Unexpected response from {url}")
+        if data.get("db_connected") is not True:
+            raise RuntimeError(f"Server health check reports database disconnected: {url}")
+        print(f"Response from {url}: JSON {data!r}", flush=True)
+    except (requests.RequestException, ValueError, RuntimeError) as error:
+        print(f"HEALTHZ FAILED: {error}", flush=True)
+        raise
+    print("HEALTHZ SUCCESS", flush=True)
+
+
 def post_rmap_message(
     session: requests.Session,
     url: str,
@@ -169,6 +200,12 @@ def request_download_link(
     base_url = args.url.rstrip("/")
 
     with requests.Session() as session:
+        check_health(
+            session,
+            base_url + HEALTHZ_PATH,
+            args.timeout,
+        )
+
         response1 = post_rmap_message(
             session,
             base_url + RMAP_INITIATE_PATH,
