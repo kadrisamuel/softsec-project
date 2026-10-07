@@ -31,6 +31,7 @@ dev = [
 	"pylint==4.1.1",
 	"pyright==1.1.414",
 	"bandit==1.9.4",
+	"python-dotenv==1.2.4",
 ]
 
 [tool.pylint."messages control"]
@@ -68,6 +69,7 @@ DEP002 = [
 	"pyright",
 	"bandit",
 	"pytest-cov",
+	"python-dotenv",
 ]
 
 [project.scripts]

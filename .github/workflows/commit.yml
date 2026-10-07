@@ -25,7 +25,7 @@ jobs:
         run: pip install -r server/requirements-dev.txt
 
       - name: Run Pylint
-        run: pylint --output-format=github app
+        run: pylint --output-format=github app ../scripts/*.py
         working-directory: ./server
 
   # Pyright

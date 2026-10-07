@@ -157,6 +157,8 @@ pytest==9.1.1
     #   pytest-cov
 pytest-cov==7.1.0
     # via Tatou-Server (pyproject.toml)
+python-dotenv==1.2.4
+    # via Tatou-Server (pyproject.toml)
 pyyaml==6.0.3
     # via bandit
 reedsolo==1.7.0
