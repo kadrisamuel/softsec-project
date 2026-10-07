@@ -98,7 +98,7 @@ def test_validation_preserves_error_priority(
 
 
 @pytest.mark.parametrize("login_length", [0, 65])
-def test_create_user_rejects_login_oob(auth_app, login_length):  # mumut identified
+def test_create_user_rejects_login_oob(auth_app, login_length):  # mutmut identified
     response = auth_app.test_client().post(
         "/api/create-user",
         json={
