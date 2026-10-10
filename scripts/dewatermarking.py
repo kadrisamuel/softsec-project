@@ -51,18 +51,6 @@ def set_id(pdf: Path, data: bytes, eof: int, trailer_start: int) -> bool:
     return True
 
 
-def clear_metadata(pdf: Path) -> bool:
-    doc = pymupdf.open(pdf)
-    # Remove standard metadata
-    doc.set_metadata({})
-    print(f"Set metadata for {pdf}")
-    # If XMP metadata exists, delete it
-    if doc.xref_xml_metadata():
-        doc.del_xml_metadata()
-        print(f"Deleted XMP metadata for {pdf}")
-    doc.save("clean.pdf", garbage=4, deflate=True)
-    return True
-
 def scrub(pdf: Path) -> bool:
     doc = pymupdf.open(pdf)
     output_path = pdf.with_name(f"{pdf.stem}_scrubbed.pdf")
