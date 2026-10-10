@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import pymupdf
 
 PDF_FOLDER = Path("output/de-watermarked")
 NEW_ID = "0123456789ABCDEF0123456789ABCDEF"
@@ -50,6 +51,39 @@ def set_id(pdf: Path, data: bytes, eof: int, trailer_start: int) -> bool:
     return True
 
 
+def clear_metadata(pdf: Path) -> bool:
+    doc = pymupdf.open(pdf)
+    # Remove standard metadata
+    doc.set_metadata({})
+    print(f"Set metadata for {pdf}")
+    # If XMP metadata exists, delete it
+    if doc.xref_xml_metadata():
+        doc.del_xml_metadata()
+        print(f"Deleted XMP metadata for {pdf}")
+    doc.save("clean.pdf", garbage=4, deflate=True)
+    return True
+
+def scrub(pdf: Path) -> bool:
+    doc = pymupdf.open(pdf)
+    output_path = pdf.with_name(f"{pdf.stem}_scrubbed.pdf")
+    # Remove standard metadata
+    doc.scrub(
+        metadata=True,
+        xml_metadata=True,
+        javascript=True,
+        embedded_files=True,
+        attached_files=True,
+        hidden_text=True,
+        redactions=False,
+        reset_fields=False,
+        reset_responses=False,
+    )
+    print(f"Scrubbed metadata for {pdf}")
+
+    doc.save(output_path, garbage=4, deflate=True)
+    return True
+
+
 for pdf in PDF_FOLDER.glob("*.pdf"):
     data = pdf.read_bytes()
     eof = data.rfind(b"%%EOF")
@@ -57,3 +91,5 @@ for pdf in PDF_FOLDER.glob("*.pdf"):
 
     remove_eof(pdf, data, eof)
     set_id(pdf, data, eof, trailer_start)
+    scrub(pdf)
+    # clear_metadata(pdf)
