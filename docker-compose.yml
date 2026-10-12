@@ -52,7 +52,6 @@ services:
       - RMAP_SERVER_PRIVATE_KEY_PASS_FILE=/run/secrets/private_key_pass
       - RMAP_CLIENT_KEYS_DIR
       - RMAP_WATERMARK_METHOD
-      - RMAP_LINK_PREFIX
       - RMAP_WATERMARKING_KEY_PATH=/run/secrets/watermarking_key
       - RMAP_SOURCE_PDF_PATH=/run/secrets/group_pdf
       - RMAP_SOURCE_DOCUMENT_NAME
