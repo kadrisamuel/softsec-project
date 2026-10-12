@@ -25,7 +25,6 @@ class RMAPServerExtension:
             server_public_key_path=app.config["RMAP_SERVER_PUBLIC_KEY_PATH"],
             server_private_key_path=app.config["RMAP_SERVER_PRIVATE_KEY_PATH"],
             passphrase=private_key_pass,
-            linkPrefix=app.config["RMAP_LINK_PREFIX"],
         )
         rmap_server.loadIdentities(app.config["RMAP_CLIENT_KEYS_DIR"])
 

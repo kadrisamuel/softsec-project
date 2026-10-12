@@ -226,10 +226,7 @@ def request_download_link(
     if expected_link is None:
         raise RuntimeError("RMAP client did not calculate an expected link.")
 
-    if (
-        returned_link != expected_link
-        and not returned_link.endswith(expected_link)
-    ):
+    if returned_link != expected_link:
         raise RuntimeError("Server returned an unexpected RMAP link.")
 
     if not re.fullmatch(r"[0-9a-fA-F]{32}", expected_link):
