@@ -78,6 +78,5 @@ for pdf in PDF_FOLDER.glob("*.pdf"):
     trailer_start = data.rfind(b"trailer")
 
     remove_eof(pdf, data, eof)
-    set_id(pdf, data, eof, trailer_start)
     scrub(pdf)
-    # clear_metadata(pdf)
+    set_id(pdf, data, eof, trailer_start)

@@ -1,7 +1,7 @@
 import pymupdf
 from pathlib import Path
 
-path = "output/de-watermarked/Group_16_clean.pdf"
+path = "output/de-watermarked/Group_12_scrubbed_scrubbed.pdf"
 
 with pymupdf.open(path) as source, pymupdf.open() as output:
     for page in source:

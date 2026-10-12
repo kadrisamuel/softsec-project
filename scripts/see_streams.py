@@ -1,7 +1,9 @@
 import pymupdf
 
-path = "output/de-watermarked/Group_16.pdf"
+path = "output/de-watermarked/Group_22.pdf"
+# path = "output/de-watermarked/Group_34.pdf"
 
+print(path)
 with pymupdf.open(path) as doc:
     for page in doc:
         # PyMuPDF applies the PDF font's character mapping here, so encoded
