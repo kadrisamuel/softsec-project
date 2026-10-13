@@ -4,11 +4,59 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import app.documents.routes
 import pytest
-from sqlalchemy import create_engine, text
-
 from app import create_app
 from app.auth.tokens import create_token
+from sqlalchemy import create_engine, text
+
+
+@pytest.fixture
+def storage_root() -> Path:
+    return Path("/storage")
+
+
+def test_sha256_file():  # mutmut identified
+    checksum = app.documents.routes._sha256_file(Path("test/samples/sample_1.pdf"))  # pylint: disable=protected-access
+
+    assert (
+        checksum == "67ab12b4f39058f2b18daedc00137409107e8f4da7802e8e66ea58d6c22b4b31"
+    )
+
+
+@pytest.mark.parametrize(
+    "test_path",
+    ["sub/file", "./sub/file"],
+)
+def test_safe_resolve_under_storage_relative(
+    test_path, storage_root: Path
+):  # mutmut identified
+    path = app.documents.routes._safe_resolve_under_storage(  # pylint: disable=protected-access
+        Path(test_path), storage_root
+    )
+
+    assert path == storage_root / test_path
+
+
+def test_safe_resolve_under_storage_absolute(storage_root: Path):  # mutmut identified
+    test_path = storage_root / "sub/file"
+    path = app.documents.routes._safe_resolve_under_storage(test_path, storage_root)  # pylint: disable=protected-access
+
+    assert path == test_path
+
+
+@pytest.mark.parametrize(
+    "test_path",
+    [
+        "../file",
+        "/file",
+    ],
+)
+def test_safe_resolve_under_storage_escape(
+    test_path, storage_root: Path
+):  # mutmut identified
+    with pytest.raises(RuntimeError):
+        app.documents.routes._safe_resolve_under_storage(Path(test_path), storage_root)  # pylint: disable=protected-access
 
 
 def test_documents_blueprint_is_registered():
@@ -21,9 +69,7 @@ def test_list_documents_preserves_missing_token_response():
     response = create_app().test_client().get("/api/list-documents")
 
     assert response.status_code == 401
-    assert response.json == {
-        "error": "Missing or invalid Authorization header"
-    }
+    assert response.json == {"error": "Missing or invalid Authorization header"}
 
 
 def test_list_documents_returns_documents():
@@ -103,9 +149,7 @@ def test_read_only_document_route_requires_token(path):
     response = create_app().test_client().get(path)
 
     assert response.status_code == 401
-    assert response.json == {
-        "error": "Missing or invalid Authorization header"
-    }
+    assert response.json == {"error": "Missing or invalid Authorization header"}
 
 
 def test_list_versions_returns_versions():
@@ -239,9 +283,7 @@ def test_write_document_route_requires_token(method, path):
     response = create_app().test_client().open(path, method=method)
 
     assert response.status_code == 401
-    assert response.json == {
-        "error": "Missing or invalid Authorization header"
-    }
+    assert response.json == {"error": "Missing or invalid Authorization header"}
 
 
 def test_upload_document_confines_unsafe_filename(tmp_path):

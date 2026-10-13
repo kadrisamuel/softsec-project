@@ -18,29 +18,19 @@ from . import bp
 def _sha256_file(path: Path) -> str:
     """Calculate SHA256 checksum for file"""
 
-    digest = hashlib.sha256()
     with path.open("rb") as file:
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+        return hashlib.file_digest(file, "sha256").hexdigest()
 
 
-def _safe_resolve_under_storage(path: str, storage_root: Path) -> Path:
+def _safe_resolve_under_storage(file_path: Path, storage_root: Path) -> Path:
     """Check sanity of file path"""
 
     storage_root = storage_root.resolve()
-    file_path = Path(path)
     if not file_path.is_absolute():
         file_path = storage_root / file_path
     file_path = file_path.resolve()
-    if hasattr(file_path, "is_relative_to"):
-        if not file_path.is_relative_to(storage_root):
-            raise RuntimeError(f"path {file_path} escapes storage root {storage_root}")
-    else:
-        try:
-            file_path.relative_to(storage_root)
-        except ValueError as e:
-            raise RuntimeError(f"path {file_path} escapes storage root {storage_root}") from e
+    if not file_path.is_relative_to(storage_root):
+        raise RuntimeError(f"path {file_path} escapes storage root {storage_root}")
     return file_path
 
 
@@ -63,7 +53,7 @@ def upload_document():
 
     storage_root = Path(current_app.config["STORAGE_DIR"]).resolve()
     user_directory = _safe_resolve_under_storage(
-        f"files/{int(g.user['id'])}",
+        Path(f"files/{int(g.user['id'])}"),
         storage_root,
     )
     user_directory.mkdir(parents=True, exist_ok=True)
@@ -72,7 +62,7 @@ def upload_document():
     final_name = request.form.get("name") or filename
     stored_name = f"{timestamp}__{filename}"
     stored_path = _safe_resolve_under_storage(
-        str(user_directory / stored_name),
+        user_directory / stored_name,
         storage_root,
     )
     file.save(stored_path)
@@ -433,7 +423,7 @@ def delete_document(document_id: str | int | None = None):
     file_missing = False
     delete_error = None
     try:
-        file_path = _safe_resolve_under_storage(row.path, storage_root)
+        file_path = _safe_resolve_under_storage(Path(row.path), storage_root)
         if file_path.exists():
             try:
                 file_path.unlink()
