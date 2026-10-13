@@ -8,7 +8,8 @@ from app import create_app
 from app.auth.tokens import create_token, require_auth
 from flask import g
 from itsdangerous import URLSafeTimedSerializer
-from pymysql import DatabaseError
+from pymysql import DatabaseError, IntegrityError
+from sqlalchemy.exc import IntegrityError as AlIntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -205,6 +206,29 @@ def test_create_user_rejects_incorrect_password_type(auth_app):
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.json == {"error": "Request body is malformed"}
+
+
+def test_create_user_collision():
+    app = create_app()
+
+    connection = MagicMock()
+    connection.execute.side_effect = AlIntegrityError("", {}, orig=IntegrityError())
+
+    engine = MagicMock()
+    engine.begin.return_value.__enter__.return_value = connection
+    app.extensions["tatou-db"] = engine
+
+    response = app.test_client().post(
+        "/api/create-user",
+        json={
+            "email": "user@example.com",
+            "login": "alice",
+            "password": "test-password",
+        },
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert response.json == {"error": "email or login already exists"}
 
 
 def test_create_user_db_error():
