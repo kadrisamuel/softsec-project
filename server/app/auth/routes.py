@@ -132,7 +132,7 @@ def create_user():
                 {"id": user_id},
             ).one()
     except IntegrityError:
-        return jsonify({"error": "email or login already exists"}), HTTPStatus.CONFLICT
+        return jsonify({"error": "email already in use"}), HTTPStatus.CONFLICT
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error while creating user")
         return jsonify(
