@@ -1,0 +1,28 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 2e19b28..bd06e13 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -73,7 +73,7 @@ services:
+       - MARIADB_PASSWORD_FILE=/run/secrets/db_pass
+     volumes:
+       - db-data:/var/lib/mysql
+-      - ./db/tatou.sql:/docker-entrypoint-initdb.d/10-tatou.sql:ro
++      - /deployment/db/tatou.sql:/docker-entrypoint-initdb.d/10-tatou.sql:ro
+     healthcheck:
+       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+       interval: 10s
+@@ -95,12 +95,12 @@ secrets:
+   db_pass:
+     environment: MARIADB_PASSWORD
+   private_key:
+-    file: private.key
++    file: /deployment/secrets/private.key
+   private_key_pass:
+     environment: RMAP_SERVER_PRIVATE_KEY_PASS
+   watermarking_key:
+     environment: WATERMARKING_MASTER_KEY
+   group_pdf:
+-    file: Group_02.pdf
++    file: /deployment/secrets/Group_02.pdf
+   flag_2:
+     environment: FLAG_2

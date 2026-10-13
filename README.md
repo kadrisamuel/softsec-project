@@ -34,13 +34,13 @@ python -m pytest
 
 ### Deploy
 
-From the root of the directory:
+From the root of the repository:
 
 ```bash
 # Create a file to set environement variables like passwords.
 cp sample.env .env
 
-# Edit .env and set unique passwords, SECRET_KEY, and SALT
+# Edit .env and set unique values
 
 # Rebuild the docker image and deploy the containers
 docker compose up --build -d
@@ -59,27 +59,29 @@ http -v :5000/healthz
 Prerequisites:
 - Working ssh connection to VM
 - fully populated `.env` file
-- private key in `private.key`
-- group pdf in `Group_02.pdf`
 
 ```bash
 # Set up docker context
 docker context create softsec-vm --docker "host=ssh://softsec@softsec-group-02.dsv.local.su.se"
+
+# Apply deploy patch to docker compose
+git apply vm-deploy.patch
 
 # Build and deploy container on VM
 docker compose up --context softsec-vm --build -d
 ```
 
 ### Updating dependencies
-Besides our dependency definitions inside `pyproject.toml`, we also keep track of all transitive dependencies using generated `requirements.txt` and `requirements-dev.txt` files.
+In addition to our dependency definitions inside `pyproject.toml`, we also keep track of all transitive dependencies using generated `requirements.txt` and `requirements-dev.txt` files.
 
 To update python dependencies, follow the following steps:
 1. Add, change, or remove dependencies in `pyproject.toml`. Make sure to specify the exact version number for the dependency.
-2. Run `pip-compile --strip-extras pyproject.toml` to create updated `requirements.txt`
-3. Run `pip-compile --extra dev -o requirements-dev.txt pyproject.toml` to create updated `requirements-dev.txt`
-4. Run `pip install -r requirements(-dev).txt` to install the most recent (dev-)dependencies
-5. Commit all altered files
+2. Move to the server directory
+3. Run `pip-compile --strip-extras pyproject.toml` to create updated `requirements.txt`
+4. Run `pip-compile --extra dev -o requirements-dev.txt pyproject.toml` to create updated `requirements-dev.txt`
+5. Run `pip install -r requirements(-dev).txt` to install the most recent (dev-)dependencies
+6. Move to the root of the repository
+7. Run `scripts/sbom-generator.sh`
+8. Commit all altered files
 
 When updating the db or base image in the docker build process, specify the exact version with the respective sha256 hash.
-
-After updating dependencies of any kind, please run scripts/sbom-generator.sh and commit the new SBOMs along with the dependency change.
