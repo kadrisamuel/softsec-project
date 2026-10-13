@@ -228,7 +228,7 @@ def test_create_user_collision():
     )
 
     assert response.status_code == HTTPStatus.CONFLICT
-    assert response.json == {"error": "email or login already exists"}
+    assert response.json == {"error": "email already in use"}
 
 
 def test_create_user_db_error():
