@@ -71,6 +71,7 @@ DEP002 = [
 	"bandit",
 	"pytest-cov",
 	"python-dotenv",
+	"mutmut"
 ]
 
 [project.scripts]
