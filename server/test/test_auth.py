@@ -53,7 +53,7 @@ def test_create_user_preserves_missing_fields_response(auth_app):
     response = auth_app.test_client().post("/api/create-user", json={})
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "email, login, and password are required"}
+    assert response.json == {"message": "email, login, and password are required"}
 
 
 @pytest.mark.parametrize(
@@ -95,7 +95,7 @@ def test_validation_preserves_error_priority(
     response = auth_app.test_client().post(endpoint, json=payload)
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": expected_message}
+    assert response.json == {"message": expected_message}
 
 
 @pytest.mark.parametrize("login_length", [0, 65])
@@ -111,7 +111,7 @@ def test_create_user_rejects_login_oob(auth_app, login_length):  # mutmut identi
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.json == {
-        "error": (
+        "message": (
             "login must be 1-64 characters using letters, numbers, "
             "periods, underscores, or hyphens"
         )
@@ -130,7 +130,7 @@ def test_create_user_rejects_login_with_path_separator(auth_app):
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.json == {
-        "error": (
+        "message": (
             "login must be 1-64 characters using letters, numbers, "
             "periods, underscores, or hyphens"
         )
@@ -148,7 +148,7 @@ def test_create_user_rejects_incorrect_login_type(auth_app):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "Request body is malformed"}
+    assert response.json == {"message": "Request body is malformed"}
 
 
 def test_create_user_rejects_invalid_email(auth_app):
@@ -162,7 +162,7 @@ def test_create_user_rejects_invalid_email(auth_app):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "email is malformed"}
+    assert response.json == {"message": "email is malformed"}
 
 
 def test_create_user_rejects_incorrect_email_type(auth_app):
@@ -176,7 +176,7 @@ def test_create_user_rejects_incorrect_email_type(auth_app):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "Request body is malformed"}
+    assert response.json == {"message": "Request body is malformed"}
 
 
 @pytest.mark.parametrize("password_length", [7, 65])
@@ -191,7 +191,7 @@ def test_create_user_rejects_password_oob(auth_app, password_length):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "password must be between 8-64 characters long"}
+    assert response.json == {"message": "password must be between 8-64 characters long"}
 
 
 def test_create_user_rejects_incorrect_password_type(auth_app):
@@ -205,7 +205,7 @@ def test_create_user_rejects_incorrect_password_type(auth_app):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "Request body is malformed"}
+    assert response.json == {"message": "Request body is malformed"}
 
 
 def test_create_user_collision():
@@ -228,7 +228,7 @@ def test_create_user_collision():
     )
 
     assert response.status_code == HTTPStatus.CONFLICT
-    assert response.json == {"error": "email already in use"}
+    assert response.json == {"message": "email already in use"}
 
 
 def test_create_user_db_error():
@@ -251,7 +251,7 @@ def test_create_user_db_error():
     )
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert response.json == {"error": "user creation failed"}
+    assert response.json == {"message": "user creation failed"}
 
 
 @pytest.mark.parametrize("password", ["test-password", "x" * 8, "x" * 64])
@@ -336,7 +336,7 @@ def test_login_preserves_missing_fields_response(auth_app):
     response = auth_app.test_client().post("/api/login", json={})
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "email and password are required"}
+    assert response.json == {"message": "email and password are required"}
 
 
 def test_login_invalid_email(auth_app):
@@ -345,7 +345,7 @@ def test_login_invalid_email(auth_app):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "email is malformed"}
+    assert response.json == {"message": "email is malformed"}
 
 
 def test_login_invalid_email_type(auth_app):
@@ -354,7 +354,7 @@ def test_login_invalid_email_type(auth_app):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "Request body is malformed"}
+    assert response.json == {"message": "Request body is malformed"}
 
 
 @pytest.mark.parametrize("password_length", [7, 65])
@@ -365,7 +365,7 @@ def test_login_password_oob(auth_app, password_length):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "password must be between 8-64 characters long"}
+    assert response.json == {"message": "password must be between 8-64 characters long"}
 
 
 def test_login_invalid_password_type(auth_app):
@@ -374,7 +374,7 @@ def test_login_invalid_password_type(auth_app):
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json == {"error": "Request body is malformed"}
+    assert response.json == {"message": "Request body is malformed"}
 
 
 @pytest.mark.parametrize("password", ["test-password", "x" * 8, "x" * 64])
@@ -420,7 +420,7 @@ def test_login_rejects_invalid_credentials():
     )
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
-    assert response.json == {"error": "invalid credentials"}
+    assert response.json == {"message": "invalid credentials"}
 
 
 def test_login_db_error():
@@ -439,7 +439,7 @@ def test_login_db_error():
     )
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert response.json == {"error": "Login failed"}
+    assert response.json == {"message": "login failed"}
 
 
 def add_protected_test_route(app):

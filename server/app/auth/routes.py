@@ -109,7 +109,7 @@ def create_user():
         message = _validation_error_message(
             val_err, "email, login, and password are required"
         )
-        return jsonify({"error": message}), HTTPStatus.BAD_REQUEST
+        return jsonify({"message": message}), HTTPStatus.BAD_REQUEST
 
     password_hash = generate_password_hash(validated_data.password)
 
@@ -132,11 +132,11 @@ def create_user():
                 {"id": user_id},
             ).one()
     except IntegrityError:
-        return jsonify({"error": "email already in use"}), HTTPStatus.CONFLICT
+        return jsonify({"message": "email already in use"}), HTTPStatus.CONFLICT
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error while creating user")
         return jsonify(
-            {"error": "user creation failed"}
+            {"message": "user creation failed"}
         ), HTTPStatus.INTERNAL_SERVER_ERROR
 
     return jsonify(
@@ -164,7 +164,7 @@ def login_user():
         validated_data = LoginModel.model_validate(payload)
     except ValidationError as val_err:
         message = _validation_error_message(val_err, "email and password are required")
-        return jsonify({"error": message}), HTTPStatus.BAD_REQUEST
+        return jsonify({"message": message}), HTTPStatus.BAD_REQUEST
 
     try:
         with get_engine().connect() as connection:
@@ -177,10 +177,10 @@ def login_user():
             ).first()
     except Exception:  # pylint: disable=broad-exception-caught
         current_app.logger.exception("DB error during login")
-        return jsonify({"error": "Login failed"}), HTTPStatus.INTERNAL_SERVER_ERROR
+        return jsonify({"message": "login failed"}), HTTPStatus.INTERNAL_SERVER_ERROR
 
     if not user or not check_password_hash(user.hpassword, validated_data.password):
-        return jsonify({"error": "invalid credentials"}), HTTPStatus.UNAUTHORIZED
+        return jsonify({"message": "invalid credentials"}), HTTPStatus.UNAUTHORIZED
 
     token = create_token(int(user.id), user.login, user.email)
     return jsonify(
