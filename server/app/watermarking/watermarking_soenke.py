@@ -309,7 +309,11 @@ class WatermarkingSoenke(WatermarkingMethod):
 
         # Check if secrets are the same across pages
         page_secrets.sort()
-        if page_secrets[0] == page_secrets[-1] and len(page_secrets[0]):
+        if (
+            page_secrets
+            and page_secrets[0] == page_secrets[-1]
+            and len(page_secrets[0])
+        ):
             return page_secrets[0]
 
         raise SecretNotFoundError()
