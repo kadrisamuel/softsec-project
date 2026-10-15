@@ -32,6 +32,7 @@ dev = [
 	"pyright==1.1.414",
 	"bandit==1.9.4",
 	"python-dotenv==1.2.4",
+	"mutmut==3.8.0",
 ]
 
 [tool.pylint."messages control"]
@@ -81,3 +82,6 @@ include = ["app*"]
 
 [tool.pyrefly]
 search-path = ["."]
+
+[tool.mutmut]
+source_paths = ["app/"]
