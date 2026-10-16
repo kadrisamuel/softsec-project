@@ -214,3 +214,5 @@ mutants
 # Local RMAP testing
 /private.key
 /output/rmap/
+
+/Group_02.pdf

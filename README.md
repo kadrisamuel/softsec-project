@@ -34,6 +34,8 @@ python -m pytest
 
 ### Deploy
 
+Before deploying the service on a local machine, place the group PDF and export of the GPG private key in the root of the project as `Group_02.pdf` and `private.key`, respectively.
+
 From the root of the repository:
 
 ```bash
@@ -59,6 +61,16 @@ http -v :5000/healthz
 Prerequisites:
 - Working ssh connection to VM
 - fully populated `.env` file
+- db schema in `/deployment/db/` on VM
+- secret files in `/deployment/secrets/` on VM
+
+The required secret files are:
+- private.key: Private GPG key for RMAP
+- Group_02.pdf: Group PDF for RMAP
+
+Make sure to restrict the access rights to those files to their owner softsec in read-only mode.
+
+From the root of the repository:
 
 ```bash
 # Set up docker context
