@@ -1,11 +1,17 @@
 """App initialization"""
 # pylint: disable=import-outside-toplevel
 
-from flask import Flask
+import logging
+
+from flask import Flask, request
 
 from . import db
 from .config import Config
 from .rmap import server
+
+logging.basicConfig(
+    level=logging.INFO, format="[%(asctime)s] [%(levelname)s] %(message)s"
+)
 
 rmap_server = server.RMAPServerExtension()
 
@@ -21,6 +27,22 @@ def create_app(config_class=Config):
         config_class.init_app(app)
 
     db.init_app(app)
+
+    # Register request logger for entire app
+    @app.after_request
+    def log_request(response):
+        sanitized_path = request.path
+        if sanitized_path.startswith("/api/get-version/"):
+            sanitized_path = "/api/get-version/<id>"
+
+        app.logger.info(
+            "%s [%s] %s - %d",
+            request.remote_addr,
+            request.method,
+            sanitized_path,
+            response.status_code,
+        )
+        return response
 
     # Register blueprints
     from .health import bp as health_bp
