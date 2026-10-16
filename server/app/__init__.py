@@ -35,11 +35,15 @@ def create_app(config_class=Config):
     # Register request logger for entire app
     @app.after_request
     def log_request(response):
+        sanitized_path = request.path
+        if sanitized_path.startswith("/api/get-version/"):
+            sanitized_path = "/api/get-version/<id>"
+
         logger.info(
             "%s [%s] %s - %d",
             request.remote_addr,
             request.method,
-            request.path,
+            sanitized_path,
             response.status_code,
         )
         return response
