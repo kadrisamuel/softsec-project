@@ -59,6 +59,9 @@ filterwarnings = [
 	"ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
 ]
 
+[tool.coverage.run]
+omit = ["app/watermarking/cli.py"]
+
 [tool.deptry.per_rule_ignores]
 DEP002 = [
 	"gunicorn",
@@ -72,7 +75,7 @@ DEP002 = [
 	"bandit",
 	"pytest-cov",
 	"python-dotenv",
-	"mutmut"
+	"mutmut",
 ]
 
 [project.scripts]
