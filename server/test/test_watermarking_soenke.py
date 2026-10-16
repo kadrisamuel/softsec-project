@@ -65,6 +65,12 @@ class TestWatermarkingSoenke:
 
         _sanity_check_inputs(secret=secret, key=key)
 
+    def test_sanity_check_secret_charset(self, key: str):
+        """Check sanity check behavior on non-ascii secret"""
+
+        with pytest.raises(ValueError):
+            _sanity_check_inputs(secret="äöü", key=key)
+
     @pytest.mark.parametrize(
         "secret",
         ["", "x" * 115],
