@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..db import get_engine
+from ..extensions import limiter
 from . import bp
 from .tokens import create_token
 
@@ -145,10 +146,10 @@ def create_user():
 
 
 @bp.post("/login")
+@limiter.limit("5 per minute")
 def login_user():
     """Login for existing service user"""
 
-    # TODO: Add rate limiting for failed login attempts
     if not request.is_json:
         return jsonify(
             {"error": "Content-Type must be application/json"}

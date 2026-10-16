@@ -7,6 +7,7 @@ from flask import Flask, request
 
 from . import db
 from .config import Config
+from .extensions import limiter
 from .rmap import server
 
 logging.basicConfig(
@@ -20,6 +21,9 @@ def create_app(config_class=Config):
     """Create flask app"""
 
     app = Flask(__name__)
+
+    # --- Limiter ---
+    limiter.init_app(app)
 
     # --- Config ---
     app.config.from_object(config_class)

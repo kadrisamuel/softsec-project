@@ -44,6 +44,8 @@ cyclonedx-python-lib==11.12.0
     # via pip-audit
 defusedxml==0.7.1
     # via py-serializable
+deprecated==3.0.0
+    # via limits
 deptry==0.25.1
     # via Tatou-Server (pyproject.toml)
 dill==0.4.1
@@ -55,6 +57,10 @@ email-validator==2.3.0
 filelock==4.0.7
     # via cachecontrol
 flask==3.1.3
+    # via
+    #   Tatou-Server (pyproject.toml)
+    #   flask-limiter
+flask-limiter==4.1.1
     # via Tatou-Server (pyproject.toml)
 gunicorn==26.2.0
     # via Tatou-Server (pyproject.toml)
@@ -76,6 +82,8 @@ libcst==1.9.0
     # via mutmut
 license-expression==30.4.4
     # via cyclonedx-python-lib
+limits==5.8.0
+    # via flask-limiter
 linkify-it-py==2.2.0
     # via markdown-it-py
 markdown-it-py[linkify]==4.2.0
@@ -106,12 +114,15 @@ numpy==2.5.3
     # via
     #   Tatou-Server (pyproject.toml)
     #   scipy
+ordered-set==4.1.0
+    # via flask-limiter
 packageurl-python==0.17.6
     # via cyclonedx-python-lib
 packaging==26.3
     # via
     #   build
     #   deptry
+    #   limits
     #   pip-audit
     #   pip-requirements-parser
     #   pytest
@@ -219,6 +230,8 @@ tomlkit==0.15.1
 typing-extensions==4.16.0
     # via
     #   cyclonedx-python-lib
+    #   flask-limiter
+    #   limits
     #   pydantic
     #   pydantic-core
     #   pyright
@@ -235,6 +248,8 @@ werkzeug==3.1.9
     #   flask
 wheel==0.48.0
     # via pip-tools
+wrapt==2.5.1
+    # via deprecated
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
