@@ -13,8 +13,13 @@ from PIL import Image
 from reedsolo import ReedSolomonError, RSCodec
 from scipy import fft
 
-from .method import InvalidKeyError, PdfSource, SecretNotFoundError, WatermarkingMethod
-from .utils import load_pdf_bytes
+from .method import (
+    InvalidKeyError,
+    PdfSource,
+    SecretNotFoundError,
+    WatermarkingMethod,
+    load_pdf_bytes,
+)
 
 TILE_SIZE = 128
 SHIFT = 20.0
