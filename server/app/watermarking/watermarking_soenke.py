@@ -26,7 +26,9 @@ def _sanity_check_inputs(secret: str, key: str):
 
     if len(secret) == 0:
         raise ValueError("The secret must not be empty")
-    if len(secret) > 114:
+    if not secret.isascii():
+        raise ValueError("The secret must only contain ASCII characters")
+    if len(secret.encode()) > 114:
         raise ValueError("The secret is too long (max 114 characters)")
 
     if len(key) == 0:
