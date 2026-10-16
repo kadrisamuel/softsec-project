@@ -21,10 +21,6 @@ def create_app(config_class=Config):
 
     app = Flask(__name__)
 
-    # --- Logger ---
-    logger = logging.getLogger(__name__)
-    app.extensions["logger"] = logger
-
     # --- Config ---
     app.config.from_object(config_class)
     if hasattr(config_class, "init_app"):
@@ -39,7 +35,7 @@ def create_app(config_class=Config):
         if sanitized_path.startswith("/api/get-version/"):
             sanitized_path = "/api/get-version/<id>"
 
-        logger.info(
+        app.logger.info(
             "%s [%s] %s - %d",
             request.remote_addr,
             request.method,
