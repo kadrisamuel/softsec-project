@@ -1,6 +1,7 @@
 """Auth token functions"""
 
 from functools import wraps
+from http import HTTPStatus
 
 from flask import current_app, g, jsonify, request
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -29,22 +30,24 @@ def require_auth(view):
     def wrapper(*args, **kwargs):
         """Verify token validity"""
 
-        # TODO: Parse the auth scheme case-insensitively and reject
-        # malformed headers
-        auth = request.headers.get("Authorization", "")
-        if not auth.startswith("Bearer "):
-            return jsonify({"error": "Missing or invalid Authorization header"}), 401
-        token = auth.split(" ", 1)[1].strip()
+        if (
+            request.authorization is None
+            or request.authorization.token is None
+            or request.authorization.type != "bearer"
+        ):
+            return jsonify(
+                {"error": "Missing or invalid Authorization header"}
+            ), HTTPStatus.UNAUTHORIZED
 
         try:
             data = _serializer().loads(
-                token,
+                request.authorization.token,
                 max_age=current_app.config["TOKEN_TTL_SECONDS"],
             )
         except SignatureExpired:
-            return jsonify({"error": "Token expired"}), 401
+            return jsonify({"error": "Token expired"}), HTTPStatus.UNAUTHORIZED
         except BadSignature:
-            return jsonify({"error": "Invalid token"}), 401
+            return jsonify({"error": "Invalid token"}), HTTPStatus.UNAUTHORIZED
 
         # TODO: Validate the token payload fields and their types
         g.user = {
