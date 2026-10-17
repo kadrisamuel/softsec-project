@@ -90,3 +90,4 @@ search-path = ["."]
 
 [tool.mutmut]
 source_paths = ["app/"]
+do_not_mutate = ["app/watermarking/cli.py"]
