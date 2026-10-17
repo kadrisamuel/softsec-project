@@ -11,9 +11,6 @@ List available methods:
 Explore a PDF and write a JSON node tree:
     python -m watermarking_cli explore input.pdf --out tree.json
 
-Embed a secret using the default method (toy-eof) and write a new PDF:
-    python -m watermarking_cli embed input.pdf output.pdf --key-prompt --secret "hello"
-
 Extract a secret:
     python -m watermarking_cli extract input.watermarked.pdf --key-prompt
 
@@ -322,8 +319,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_embed.add_argument("output", help="Output (watermarked) PDF path")
     p_embed.add_argument(
         "--method",
-        default="toy-eof",
-        help="Watermarking method name (default: toy-eof)",
+        help="Watermarking method name",
     )
     p_embed.add_argument("--position", help="Optional position hint", default=None)
 
@@ -347,8 +343,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_extract.add_argument("input", help="Input PDF path (possibly watermarked)")
     p_extract.add_argument(
         "--method",
-        default="toy-eof",
-        help="Watermarking method name (default: toy-eof)",
+        help="Watermarking method name",
     )
 
     g_key2 = p_extract.add_argument_group("key input")
