@@ -1,3 +1,4 @@
+"""Remove all streams, except the selected one, from a PDF"""
 from pathlib import Path
 
 import pymupdf

@@ -1,3 +1,4 @@
+"""View all streams present in a PDF"""
 import pymupdf
 
 ## Change this:

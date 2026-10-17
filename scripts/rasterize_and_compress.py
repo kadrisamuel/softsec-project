@@ -1,7 +1,11 @@
-import pymupdf
+"""Rasterize and compress a PDF"""
 from pathlib import Path
 
-path = "output/de-watermarked/Group_12_scrubbed_scrubbed.pdf"
+import pymupdf
+
+## Change this:
+path = Path("output/de-watermarked/Group_XX.pdf")
+output_path = path.with_name(f"{path.stem}_rasterized_compressed{path.suffix}")
 
 with pymupdf.open(path) as source, pymupdf.open() as output:
     for page in source:
@@ -13,7 +17,5 @@ with pymupdf.open(path) as source, pymupdf.open() as output:
             keep_proportion=False,
         )
 
-    pdf = Path(path)
-    output_path = pdf.with_name(f"{pdf.stem}_rasterized_compressed.pdf")
     output.set_metadata({})
     output.save(output_path, garbage=4, deflate=True)
