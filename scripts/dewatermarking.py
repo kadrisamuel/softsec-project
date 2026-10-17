@@ -1,82 +1,75 @@
-from pathlib import Path
 import re
+from pathlib import Path
+
 import pymupdf
 
 PDF_FOLDER = Path("output/de-watermarked")
-NEW_ID = "0123456789ABCDEF0123456789ABCDEF"
+NEW_ID = b"0123456789ABCDEF0123456789ABCDEF"
 
-pattern = re.compile(
+ID_PATTERN = re.compile(
     rb"(/ID\s*\[\s*<)[0-9A-Fa-f]{32}(>\s*<)"
     rb"[0-9A-Fa-f]{32}(>\s*\])"
 )
 
-def remove_eof(pdf: Path, data: bytes, eof: int) -> bool:
-    data = pdf.read_bytes()
-    end = data.rfind(b"%%EOF")
-    if end == -1:
-        print(f"Skipping {pdf}: no EOF marker")
-        return False
-    print(f"Removing EOF marker from {pdf}")
-    pdf.write_bytes(data[:end + len(b"%%EOF")] + b"\n")
-    return True
+
+def final_trailer(data: bytes) -> tuple[int, int]:
+    eof = data.rfind(b"%%EOF")
+    trailer_start = data.rfind(b"trailer", 0, eof)
+    return trailer_start, eof
 
 
-def set_id(pdf: Path, data: bytes, eof: int, trailer_start: int) -> bool:
+def set_id(data: bytes, pdf: Path) -> bytes | None:
+    trailer_start, eof = final_trailer(data)
     if trailer_start < 0 or eof < trailer_start:
         print(f"No final text trailer found: {pdf}")
-        return False
+        return None
 
     trailer = data[trailer_start:eof]
-    if b"/Encrypt" in trailer or b"/ByteRange" in data:
-        print(f"Encrypted or signed PDF; aborting mission: {pdf}")
-        return False
-
-    matches = list(pattern.finditer(trailer))
+    matches = list(ID_PATTERN.finditer(trailer))
     if len(matches) != 1:
         print(f"Expected one ID pair in final trailer: {pdf}")
-        return False
+        return None
 
     match = matches[0]
-    replacement = (
-        match.group(1) + NEW_ID.encode("ascii")
-        + match.group(2) + NEW_ID.encode("ascii")
-        + match.group(3)
-    )
-    updated = data[:trailer_start] + pattern.sub(
-        replacement, trailer, count=1
-    ) + data[eof:]
-
-    pdf.write_bytes(updated)
-    print(f"Updated ID for {pdf}")
-    return True
+    replacement = match.group(1) + NEW_ID + match.group(2) + NEW_ID + match.group(3)
+    updated_trailer = ID_PATTERN.sub(replacement, trailer, count=1)
+    return data[:trailer_start] + updated_trailer + b"%%EOF\n"
 
 
 def scrub(pdf: Path) -> bool:
-    doc = pymupdf.open(pdf)
-    output_path = pdf.with_name(f"{pdf.stem}_scrubbed.pdf")
-    # Remove standard metadata
-    doc.scrub(
-        metadata=True,
-        xml_metadata=True,
-        javascript=True,
-        embedded_files=True,
-        attached_files=True,
-        hidden_text=True,
-        redactions=False,
-        reset_fields=False,
-        reset_responses=False,
-    )
-    print(f"Scrubbed metadata for {pdf}")
+    source_data = pdf.read_bytes()
+    trailer_start, eof = final_trailer(source_data)
+    if b"/ByteRange" in source_data or (
+        trailer_start >= 0 and b"/Encrypt" in source_data[trailer_start:eof]
+    ):
+        print(f"Encrypted or signed PDF; skipping {pdf}")
+        return False
 
-    doc.save(output_path, garbage=4, deflate=True)
+    with pymupdf.open(pdf) as doc:
+        doc.scrub(
+            metadata=True,
+            xml_metadata=True,
+            javascript=True,
+            embedded_files=True,
+            attached_files=True,
+            hidden_text=True,
+            redactions=False,
+            reset_fields=False,
+            reset_responses=False,
+        )
+        scrubbed_data = doc.tobytes(garbage=4, deflate=True)
+
+    updated_data = set_id(scrubbed_data, pdf)
+    if updated_data is None:
+        return False
+
+    output_path = pdf.with_name(f"{pdf.stem}_scrubbed.pdf")
+    output_path.write_bytes(updated_data)
+    print(f"Scrubbed metadata and updated ID: {output_path}")
     return True
 
 
-for pdf in PDF_FOLDER.glob("*.pdf"):
-    data = pdf.read_bytes()
-    eof = data.rfind(b"%%EOF")
-    trailer_start = data.rfind(b"trailer")
-
-    remove_eof(pdf, data, eof)
-    scrub(pdf)
-    set_id(pdf, data, eof, trailer_start)
+if __name__ == "__main__":
+    for pdf in sorted(PDF_FOLDER.glob("*.pdf")):
+        if "scrubbed" not in pdf.stem.split("_"):
+            scrub(pdf)
