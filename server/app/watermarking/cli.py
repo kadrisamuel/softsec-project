@@ -26,24 +26,161 @@ Exit codes
 5   other watermarking error
 """
 
-from __future__ import annotations
-
 import argparse
 import getpass
+import hashlib
 import json
+import re
 import sys
 from collections.abc import Iterable
+from typing import Any, Final
 
-from .method import InvalidKeyError, SecretNotFoundError, WatermarkingError
+from .method import (
+    InvalidKeyError,
+    PdfSource,
+    SecretNotFoundError,
+    WatermarkingError,
+    load_pdf_bytes,
+)
 from .utils import (
     METHODS,
     apply_watermark,
-    explore_pdf,
     is_watermarking_applicable,
     read_watermark,
 )
 
 __version__ = "0.1.0"
+
+
+# --------------------
+# PDF exploration
+# --------------------
+
+# Pre-compiled regex for the fallback parser (very permissive):
+_OBJ_RE: Final[re.Pattern[bytes]] = re.compile(rb"(?m)^(\d+)\s+(\d+)\s+obj\b")
+_ENDOBJ_RE: Final[re.Pattern[bytes]] = re.compile(rb"\bendobj\b")
+_TYPE_RE: Final[re.Pattern[bytes]] = re.compile(rb"/Type\s*/([A-Za-z]+)")
+
+
+def _sha1(b: bytes) -> str:
+    return hashlib.sha1(b, usedforsecurity=False).hexdigest()
+
+
+def explore_pdf(pdf: PdfSource) -> dict[str, Any]:
+    """Return a JSON-serializable *tree* describing the PDF's nodes.
+
+    The structure is deterministic for a given set of input bytes. When
+    PyMuPDF (``fitz``) is available, the function uses the cross
+    reference (xref) table to enumerate objects and page nodes. When not
+    available, it falls back to scanning for ``obj`` / ``endobj`` blocks.
+
+    The returned dictionary has the following shape (fields may be
+    omitted when data is unavailable):
+
+    .. code-block:: json
+
+        {
+          "id": "pdf:<sha1>",
+          "type": "Document",
+          "size": 12345,
+          "children": [
+            {"id": "page:0000", "type": "Page", ...},
+            {"id": "obj:000001", "type": "XObject", ...}
+          ]
+        }
+
+    Each node includes a deterministic ``id`` suitable as a "name node".
+    """
+    data = load_pdf_bytes(pdf)
+
+    root: dict[str, Any] = {
+        "id": f"pdf:{_sha1(data)}",
+        "type": "Document",
+        "size": len(data),
+        "children": [],
+    }
+
+    try:
+        import fitz  # type: ignore pylint: disable=import-outside-toplevel
+
+        doc = fitz.open(stream=data, filetype="pdf")
+        # Pages as first-class nodes
+        for page_index in range(doc.page_count):
+            bb_rect = doc.load_page(page_index).bound()
+            node = {
+                "id": f"page:{page_index:04d}",
+                "type": "Page",
+                "index": page_index,
+                "bbox": [
+                    bb_rect.x0,
+                    bb_rect.y0,
+                    bb_rect.x1,
+                    bb_rect.y1,
+                ],  # [x0,y0,x1,y1]
+            }
+            root["children"].append(node)
+
+        # XRef objects
+        xref_len = doc.xref_length()
+        for xref in range(1, xref_len):
+            try:
+                s = doc.xref_object(xref, compressed=False) or ""
+            except Exception:  # pylint: disable=broad-exception-caught
+                s = ""
+            s_bytes = s.encode("latin-1", "replace") if isinstance(s, str) else b""
+            # Type detection
+            m = _TYPE_RE.search(s_bytes)
+            pdf_type = m.group(1).decode("ascii", "replace") if m else "Object"
+            node = {
+                "id": f"obj:{xref:06d}",
+                "type": pdf_type,
+                "xref": xref,
+                "is_stream": bool(doc.xref_is_stream(xref)),
+                "content_sha1": _sha1(s_bytes) if s_bytes else None,
+            }
+            root["children"].append(node)
+
+        doc.close()
+        return root
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Fallback: regex-based object scanning (no third-party deps)
+        pass  # nosec: B110
+
+    # Regex fallback: enumerate uncompressed objects
+    children: list[dict[str, Any]] = []
+    for m in _OBJ_RE.finditer(data):
+        obj_num = int(m.group(1))
+        gen_num = int(m.group(2))
+        start = m.end()
+        end_match = _ENDOBJ_RE.search(data, start)
+        end = end_match.start() if end_match else start
+        slice_bytes = data[start:end]
+        # Guess type
+        t = _TYPE_RE.search(slice_bytes)
+        pdf_type = t.group(1).decode("ascii", "replace") if t else "Object"
+        node = {
+            "id": f"obj:{obj_num:06d}:{gen_num:05d}",
+            "type": pdf_type,
+            "object": obj_num,
+            "generation": gen_num,
+            "content_sha1": _sha1(slice_bytes),
+        }
+        children.append(node)
+
+    # Also derive simple page nodes by searching for '/Type /Page'
+    page_nodes = [c for c in children if c.get("type") == "Page"]
+    for i, c in enumerate(page_nodes):
+        # Provide deterministic page IDs independent from object numbers
+        c_page = {
+            "id": f"page:{i:04d}",
+            "type": "Page",
+            "xref_hint": c["id"],
+        }
+        children.insert(i, c_page)
+
+    root["children"] = children
+    return root
+
 
 # --------------------
 # Helpers
