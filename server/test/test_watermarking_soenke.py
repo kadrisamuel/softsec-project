@@ -171,12 +171,12 @@ class TestWatermarkingSoenke:
             watermarking.add_watermark(broken_pdf, secret, key)
 
     # ---------- Read secret ----------
-    def test_read_secret_empty_key(self, broken_pdf: bytes):
+    def test_read_secret_empty_key(self):
         """Test read secret exception on empty key"""
 
         watermarking = WatermarkingSoenke()
-        with pytest.raises(ValueError):
-            watermarking.read_secret(broken_pdf, "")
+        with open("test/samples/sample_1.pdf", "rb") as pdf, pytest.raises(ValueError):
+            watermarking.read_secret(pdf, "")
 
     def test_read_secret_empty_pdf(self, broken_pdf: bytes):
         """Test read secret exception on empty pdf"""
