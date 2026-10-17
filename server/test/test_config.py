@@ -2,7 +2,6 @@
 
 import pytest
 from app import create_app
-from app.config import _read_secret
 
 
 def test_app_fails_when_secret_file_is_missing(monkeypatch, tmp_path):
@@ -13,7 +12,7 @@ def test_app_fails_when_secret_file_is_missing(monkeypatch, tmp_path):
     with pytest.raises(
         RuntimeError, match="Cannot read secret file from SECRET_KEY_FILE"
     ):
-        _read_secret("SECRET_KEY_FILE")
+        create_app()
 
 
 def test_app_fails_when_secret_file_is_empty(monkeypatch, tmp_path):
@@ -24,7 +23,7 @@ def test_app_fails_when_secret_file_is_empty(monkeypatch, tmp_path):
     monkeypatch.setenv("SECRET_KEY_FILE", str(secret_path))
 
     with pytest.raises(RuntimeError, match="Secret file from SECRET_KEY_FILE is empty"):
-        _read_secret("SECRET_KEY_FILE")
+        create_app()
 
 
 def test_app_fails_when_secret_path_is_unset(monkeypatch):
@@ -35,7 +34,7 @@ def test_app_fails_when_secret_path_is_unset(monkeypatch):
     with pytest.raises(
         RuntimeError, match="SECRET_KEY_FILE must point to a secret file"
     ):
-        _read_secret("SECRET_KEY_FILE")
+        create_app()
 
 
 def test_app_correct_config(monkeypatch, tmp_path):  # mutmut identified
