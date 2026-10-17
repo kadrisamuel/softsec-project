@@ -1,7 +1,7 @@
 import pymupdf
 
-path = "output/de-watermarked/Group_22.pdf"
-# path = "output/de-watermarked/Group_34.pdf"
+## Change this:
+path = "output/de-watermarked/Group_XX.pdf"
 
 print(path)
 with pymupdf.open(path) as doc:
