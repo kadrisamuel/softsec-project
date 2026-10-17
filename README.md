@@ -5,15 +5,6 @@ A web platform for pdf watermarking. This project is intended for pedagogical us
 
 The following instructions are meant for a bash terminal on a Linux machine. If you are using something else, you will need to adapt them.
 
-To clone the repo, you can simply run:
-
-```bash
-git clone https://github.com/nharrand/tatou-2026.git
-```
-
-Note that you should probably fork the repo and clone your own repo.
-
-
 ### Run python unit tests
 
 ```bash
@@ -30,6 +21,27 @@ python -m pip install -r requirements-dev.txt
 
 # Run the unit tests
 python -m pytest
+```
+
+### Run mutmut mutation testing
+
+```bash
+cd tatou/server
+
+# Create a python virtual environement
+python3 -m venv .venv
+
+# Activate your virtual environement
+. .venv/bin/activate
+
+# Install the necessary dependencies
+python -m pip install -r requirements-dev.txt
+
+# Run mutmut
+mutmut run
+
+# Browse mutmut results
+mutmut browse
 ```
 
 ### Deploy
