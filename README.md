@@ -68,6 +68,14 @@ http -v :5000/healthz
 # Open your browser at 127.0.0.1:5000 to check if the website is up.
 ```
 
+### VM configuration
+
+This repository assumes that a properly configured VM exists, which will be used as the deployment target for the following step.
+
+The configuration of this VM can be done to the user's liking, but we still provide the basic configuration we applied to our VM in `vm_config`. This directory includes:
+- `sshd_config` - restrictive sshd config only allowing key-based SSH access for the `softsec` user. We had to enable IP forwarding later to interact with the other groups' services
+- `ufw.txt` - a list of commands applied to configure UFW. We only allow access to SSH and our service port.
+
 ### VM Deploy
 
 Prerequisites:
