@@ -1,6 +1,5 @@
 """Utility functions and registry for PDF watermarking methods"""
 
-from .add_after_eof import AddAfterEOF
 from .method import (
     PdfSource,
     WatermarkingMethod,
@@ -13,7 +12,6 @@ from .watermarking_soenke import WatermarkingSoenke
 # --------------------
 
 METHODS: dict[str, WatermarkingMethod] = {
-    AddAfterEOF.name: AddAfterEOF(),
     RGBDFTQIMWatermark.name: RGBDFTQIMWatermark(),
     WatermarkingSoenke.name: WatermarkingSoenke(),
 }
