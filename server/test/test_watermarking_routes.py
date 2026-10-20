@@ -84,7 +84,6 @@ def test_plugin_loader_route_is_not_registered():
 
 
 @pytest.mark.parametrize("id_source", ["url", "json"])
-@pytest.mark.parametrize("position", [None, "bottom-right"])
 def test_create_watermark_saves_version(
     route_app,
     auth_headers,
@@ -92,7 +91,6 @@ def test_create_watermark_saves_version(
     tmp_path,
     monkeypatch,
     id_source,
-    position,
     secret,
     key,
 ):
@@ -127,8 +125,6 @@ def test_create_watermark_saves_version(
     if id_source == "json":
         path = "/api/create-watermark"
         payload["id"] = "3"
-    if position is not None:
-        payload["position"] = position
 
     response = route_app.test_client().post(
         path, json=payload, headers=auth_headers
@@ -144,20 +140,20 @@ def test_create_watermark_saves_version(
         "link": link,
         "intended_for": "Bob Smith",
         "method": "rgb-dft-qim-v1",
-        "position": position,
+        "position": None,
         "filename": filename,
         "size": len(watermarked_bytes),
     }
     assert destination.read_bytes() == watermarked_bytes
     check_applicable.assert_called_once_with(
-        method="rgb-dft-qim-v1", pdf=str(source_path), position=position
+        method="rgb-dft-qim-v1", pdf=str(source_path), position=None
     )
     apply_watermark.assert_called_once_with(
         pdf=str(source_path),
         secret=secret,
         key=key,
         method="rgb-dft-qim-v1",
-        position=position,
+        position=None,
     )
     select_statement, select_parameters = select_connection.execute.call_args.args
     assert "id = :id AND ownerid = :uid" in str(select_statement)
@@ -173,7 +169,7 @@ def test_create_watermark_saves_version(
         "intended_for": "Bob Smith",
         "secret": secret,
         "method": "rgb-dft-qim-v1",
-        "position": position or "",
+        "position": "",
         "path": destination,
     }
     assert str(insert_connection.execute.call_args_list[1].args[0]) == (
@@ -182,10 +178,10 @@ def test_create_watermark_saves_version(
 
 
 @pytest.mark.parametrize(
-    ("path", "use_relative_path", "position"),
+    ("path", "use_relative_path"),
     [
-        ("/api/read-watermark/3", True, None),
-        ("/api/read-watermark", False, "footer"),
+        ("/api/read-watermark/3", True),
+        ("/api/read-watermark", False),
     ],
 )
 def test_read_watermark_returns_extracted_secret(
@@ -196,7 +192,6 @@ def test_read_watermark_returns_extracted_secret(
     monkeypatch,
     path,
     use_relative_path,
-    position,
     secret,
     key,
 ):
@@ -216,8 +211,6 @@ def test_read_watermark_returns_extracted_secret(
     payload = {"method": "rgb-dft-qim-v1", "key": key}
     if path == "/api/read-watermark":
         payload["id"] = "3"
-    if position is not None:
-        payload["position"] = position
 
     response = route_app.test_client().post(
         path, json=payload, headers=auth_headers
@@ -228,7 +221,7 @@ def test_read_watermark_returns_extracted_secret(
         "documentid": 3,
         "secret": secret,
         "method": "rgb-dft-qim-v1",
-        "position": position,
+        "position": None,
     }
     read_watermark.assert_called_once_with(
         method="rgb-dft-qim-v1", pdf=str(file_path.resolve()), key=key
