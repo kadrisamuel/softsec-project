@@ -1,5 +1,10 @@
+from pathlib import Path
+from unittest.mock import MagicMock
+
 import pytest
 
+from app import create_app
+from app.auth.tokens import create_token
 from app.config import Config
 
 
@@ -14,3 +19,23 @@ def enable_app_routes(monkeypatch, tmp_path):
     monkeypatch.setattr(Config, "ENABLE_AUTH_ROUTES", True)
     monkeypatch.setattr(Config, "ENABLE_DOCUMENT_ROUTES", True)
     monkeypatch.setattr(Config, "ENABLE_WATERMARKING_ROUTES", True)
+
+
+@pytest.fixture
+def sample_pdf() -> bytes:
+    return (Path(__file__).parent / "samples" / "sample_1.pdf").read_bytes()
+
+
+@pytest.fixture
+def route_app(tmp_path):
+    app = create_app()
+    app.config.update(TESTING=True, STORAGE_DIR=tmp_path)
+    app.extensions["tatou-db"] = MagicMock()
+    return app
+
+
+@pytest.fixture
+def auth_headers(route_app):
+    with route_app.app_context():
+        token = create_token(7, "alice", "user@example.com")
+    return {"Authorization": f"Bearer {token}"}

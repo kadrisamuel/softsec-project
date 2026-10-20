@@ -1,5 +1,7 @@
 import datetime as dt
+import hashlib
 import io
+from http import HTTPStatus
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -9,6 +11,7 @@ import pytest
 from app import create_app
 from app.auth.tokens import create_token
 from sqlalchemy import create_engine, text
+from werkzeug.http import http_date
 
 
 @pytest.fixture
@@ -150,6 +153,89 @@ def test_read_only_document_route_requires_token(path):
 
     assert response.status_code == 401
     assert response.json == {"error": "Missing or invalid Authorization header"}
+
+
+@pytest.mark.parametrize(
+    ("path", "name", "download_name"),
+    [
+        ("/api/get-document/3", "report.pdf", "report.pdf"),
+        ("/api/get-document?id=3", "report", "report.pdf"),
+        ("/api/get-document?documentid=3", "report.PDF", "report.PDF"),
+    ],
+)
+def test_get_document_returns_owned_pdf(
+    route_app, auth_headers, sample_pdf, tmp_path, path, name, download_name
+):
+    file_path = tmp_path / "stored.pdf"
+    file_path.write_bytes(sample_pdf)
+    checksum = hashlib.sha256(sample_pdf).hexdigest()
+
+    engine = route_app.extensions["tatou-db"]
+    connection = engine.connect.return_value.__enter__.return_value
+    connection.execute.return_value.first.return_value = SimpleNamespace(
+        id=3,
+        name=name,
+        path=str(file_path),
+        sha256_hex=checksum.upper(),
+        size=len(sample_pdf),
+    )
+
+    with route_app.test_client().get(path, headers=auth_headers) as response:
+        assert response.status_code == HTTPStatus.OK
+        assert response.data == sample_pdf
+        assert response.content_type == "application/pdf"
+        assert response.content_length == len(sample_pdf)
+        assert response.headers["Content-Disposition"] == (
+            f"inline; filename={download_name}"
+        )
+        assert response.headers["Cache-Control"] == (
+            "private, max-age=0, must-revalidate"
+        )
+        assert response.headers["Last-Modified"] == http_date(file_path.stat().st_mtime)
+        assert response.get_etag() == (checksum, False)
+
+    connection.execute.assert_called_once()
+    statement, parameters = connection.execute.call_args.args
+    assert "id = :id AND ownerid = :uid" in str(statement)
+    assert parameters == {"id": 3, "uid": 7}
+
+
+@pytest.mark.parametrize(
+    ("link", "download_name"),
+    [
+        ("private-version", "private-version.pdf"),
+        ("private-version.pdf", "private-version.pdf"),
+        ("private-version.PDF", "private-version.PDF"),
+    ],
+)
+def test_get_version_downloads_pdf_for_valid_secret_link(
+    route_app, sample_pdf, tmp_path, link, download_name
+):
+    version_path = tmp_path / "version.pdf"
+    version_path.write_bytes(sample_pdf)
+
+    engine = route_app.extensions["tatou-db"]
+    connection = engine.connect.return_value.__enter__.return_value
+    connection.execute.return_value.first.return_value = SimpleNamespace(
+        link=link,
+        path=str(version_path),
+    )
+
+    with route_app.test_client().get(f"/api/get-version/{link}") as response:
+        assert response.status_code == HTTPStatus.OK
+        assert response.mimetype == "application/pdf"
+        assert response.data == sample_pdf
+        assert response.headers["Content-Disposition"] == (
+            f"inline; filename={download_name}"
+        )
+        assert response.headers["Cache-Control"] == "private, max-age=0"
+        assert response.content_length == len(sample_pdf)
+
+    connection.execute.assert_called_once()
+    statement, parameters = connection.execute.call_args.args
+    assert "FROM Versions" in str(statement)
+    assert "WHERE link = :link" in str(statement)
+    assert parameters == {"link": link}
 
 
 def test_list_versions_returns_versions():
