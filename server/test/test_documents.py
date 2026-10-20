@@ -182,7 +182,7 @@ def test_get_document_returns_owned_pdf(
     with route_app.test_client().get(path, headers=auth_headers) as response:
         assert response.status_code == HTTPStatus.OK
         assert response.data == sample_pdf
-        assert response.content_type == "application/pdf"
+        assert response.mimetype == "application/pdf"
         assert response.headers["Content-Disposition"] == (
             f"inline; filename={download_name}"
         )
