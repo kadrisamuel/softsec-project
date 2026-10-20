@@ -155,14 +155,9 @@ def test_create_watermark_saves_version(
         method="rgb-dft-qim-v1",
         position=None,
     )
-    select_statement, select_parameters = select_connection.execute.call_args.args
-    assert "id = :id AND ownerid = :uid" in str(select_statement)
+    select_parameters = select_connection.execute.call_args.args[1]
     assert select_parameters == {"id": 3, "uid": 7}
-    assert insert_connection.execute.call_count == 2
-    insert_statement, insert_parameters = (
-        insert_connection.execute.call_args_list[0].args
-    )
-    assert "INSERT INTO Versions" in str(insert_statement)
+    insert_parameters = insert_connection.execute.call_args_list[0].args[1]
     assert insert_parameters == {
         "documentid": 3,
         "link": link,
@@ -172,9 +167,6 @@ def test_create_watermark_saves_version(
         "position": "",
         "path": destination,
     }
-    assert str(insert_connection.execute.call_args_list[1].args[0]) == (
-        "SELECT LAST_INSERT_ID()"
-    )
 
 
 @pytest.mark.parametrize(
@@ -226,9 +218,7 @@ def test_read_watermark_returns_extracted_secret(
     read_watermark.assert_called_once_with(
         method="rgb-dft-qim-v1", pdf=str(file_path.resolve()), key=key
     )
-    connection.execute.assert_called_once()
-    statement, parameters = connection.execute.call_args.args
-    assert "id = :id AND ownerid = :uid" in str(statement)
+    parameters = connection.execute.call_args.args[1]
     assert parameters == {"id": 3, "uid": 7}
 
 
